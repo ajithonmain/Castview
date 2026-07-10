@@ -1,0 +1,13 @@
+{
+  "name": "castview",
+  "version": "1.0.0",
+  "description": "Mirror a laptop screen to any browser on the same network",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "screenshot-desktop": "^1.15.1",
+    "ws": "^8.18.0"
+  }
+}
