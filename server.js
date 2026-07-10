@@ -31,7 +31,8 @@ const server = http.createServer((req, res) => {
       getLocalIps().map(async ({ name, address }) => {
         const url = `http://${address}:${PORT}`;
         const qrSvg = await QRCode.toString(url, { type: 'svg', margin: 1 });
-        return { name, address, url, qrSvg };
+        const { kind, label } = classifyInterface(name);
+        return { name, address, url, qrSvg, kind, label };
       })
     )
       .then((interfaces) => {
@@ -231,6 +232,48 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
     stopCapture();
     process.exit(0);
   });
+}
+
+// Classify each network interface as wifi / usb / ethernet so the setup page
+// can tell the user which QR belongs to which connection path.
+
+let darwinPortCache = { at: 0, map: {} };
+
+function darwinPortMap() {
+  if (Date.now() - darwinPortCache.at < 10000) return darwinPortCache.map;
+  try {
+    const out = execFileSync('networksetup', ['-listallhardwareports'], { encoding: 'utf8' });
+    const map = {};
+    let port = null;
+    for (const line of out.split('\n')) {
+      const p = line.match(/^Hardware Port: (.+)$/);
+      if (p) { port = p[1].trim(); continue; }
+      const d = line.match(/^Device: (.+)$/);
+      if (d && port) map[d[1].trim()] = port;
+    }
+    darwinPortCache = { at: Date.now(), map };
+  } catch {
+    darwinPortCache = { at: Date.now(), map: {} };
+  }
+  return darwinPortCache.map;
+}
+
+function classifyInterface(name) {
+  if (process.platform === 'darwin') {
+    const port = darwinPortMap()[name] || name;
+    if (/wi-?fi|airport/i.test(port)) return { kind: 'wifi', label: 'WiFi' };
+    if (/ethernet|thunderbolt|bridge|lan/i.test(port)) return { kind: 'ethernet', label: port };
+    // Tethered phones show up under their device name, e.g. "Pixel 10 Pro"
+    return { kind: 'usb', label: port };
+  }
+  if (process.platform === 'win32') {
+    if (/wi-?fi|wireless|wlan/i.test(name)) return { kind: 'wifi', label: 'WiFi' };
+    if (/ndis|tether|usb/i.test(name)) return { kind: 'usb', label: name };
+    return { kind: 'ethernet', label: name };
+  }
+  if (/^wl/i.test(name)) return { kind: 'wifi', label: 'WiFi' };
+  if (/^(usb|rndis|enx)/i.test(name)) return { kind: 'usb', label: name };
+  return { kind: 'ethernet', label: name };
 }
 
 function getLocalIps() {

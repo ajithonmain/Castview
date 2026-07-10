@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#000000">
 <title>Castview</title>
 <style>
   html, body {
@@ -19,54 +20,111 @@
     object-fit: contain;
     display: block;
   }
+  /* Rotated mode: for viewing a landscape screen on a portrait-held phone */
+  body.rotated #screen {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100vh;
+    height: 100vw;
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+
+  #ui {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity .35s ease;
+    z-index: 10;
+  }
+  #ui.hidden { opacity: 0; }
+
   #status {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    padding: 4px 10px;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 13px;
-    color: #fff;
-    background: rgba(0, 0, 0, 0.6);
-    border-radius: 4px;
-    z-index: 10;
+    position: absolute;
+    top: calc(10px + env(safe-area-inset-top));
+    left: calc(12px + env(safe-area-inset-left));
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.55);
+    text-shadow: 0 1px 3px rgba(0,0,0,.8);
   }
-  #status.connected { color: #4ade80; }
-  #status.reconnecting { color: #fbbf24; }
-  #fullscreen-btn {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    padding: 6px 12px;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 13px;
-    color: #fff;
-    background: rgba(0, 0, 0, 0.6);
+  #status .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #4ade80;
+  }
+  #status.reconnecting .dot {
+    background: #fbbf24;
+    animation: blink 1s ease infinite;
+  }
+  @keyframes blink { 50% { opacity: .2; } }
+  #status .label { display: none; }
+  #status.reconnecting .label { display: inline; }
+
+  .controls {
+    position: absolute;
+    top: calc(8px + env(safe-area-inset-top));
+    right: calc(10px + env(safe-area-inset-right));
+    display: flex;
+    gap: 8px;
+    pointer-events: auto;
+  }
+  .btn {
+    width: 38px; height: 38px;
+    border-radius: 50%;
     border: none;
-    border-radius: 4px;
-    z-index: 10;
+    background: rgba(20, 22, 26, 0.65);
+    backdrop-filter: blur(6px);
+    color: rgba(255, 255, 255, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    padding: 0;
   }
+  .btn:active { background: rgba(60, 64, 70, 0.75); }
+  .btn svg { display: block; }
+  #fs-exit { display: none; }
+  body.fs #fs-enter { display: none; }
+  body.fs #fs-exit { display: block; }
 </style>
 </head>
 <body>
-  <div id="status" class="reconnecting">Connecting...</div>
-  <button id="fullscreen-btn">Fullscreen</button>
-  <img id="screen" alt="Screen mirror">
+  <img id="screen" alt="Mirrored screen">
+
+  <div id="ui">
+    <div id="status" class="reconnecting"><span class="dot"></span><span class="label">Connecting…</span></div>
+    <div class="controls">
+      <button class="btn" id="rotate" title="Rotate view">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 11A8 8 0 1 0 12 20"/>
+          <path d="M20 6v5h-5"/>
+        </svg>
+      </button>
+      <button class="btn" id="fullscreen" title="Fullscreen">
+        <svg id="fs-enter" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
+        </svg>
+        <svg id="fs-exit" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>
+        </svg>
+      </button>
+    </div>
+  </div>
 
   <script>
     const img = document.getElementById('screen');
+    const ui = document.getElementById('ui');
     const statusEl = document.getElementById('status');
-    const fullscreenBtn = document.getElementById('fullscreen-btn');
 
+    // --- stream ---
     let currentUrl = null;
     let reconnectDelay = 500;
     const MAX_RECONNECT_DELAY = 5000;
-
-    function setStatus(text, cls) {
-      statusEl.textContent = text;
-      statusEl.className = cls;
-    }
 
     function connect() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -74,40 +132,68 @@
       ws.binaryType = 'blob';
 
       ws.onopen = () => {
-        setStatus('Connected', 'connected');
+        statusEl.classList.remove('reconnecting');
         reconnectDelay = 500;
       };
 
       ws.onmessage = (event) => {
-        const blob = event.data;
-        const url = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(event.data);
         img.src = url;
-        if (currentUrl) {
-          URL.revokeObjectURL(currentUrl);
-        }
+        if (currentUrl) URL.revokeObjectURL(currentUrl);
         currentUrl = url;
       };
 
       ws.onclose = () => {
-        setStatus('Reconnecting...', 'reconnecting');
+        statusEl.classList.add('reconnecting');
+        statusEl.querySelector('.label').textContent = 'Reconnecting…';
         setTimeout(connect, reconnectDelay);
         reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
       };
 
-      ws.onerror = () => {
-        ws.close();
-      };
+      ws.onerror = () => ws.close();
     }
+    connect();
 
-    fullscreenBtn.addEventListener('click', () => {
+    // --- controls auto-hide: fade out when idle, any tap/move brings back ---
+    let hideTimer = null;
+    function showUi() {
+      ui.classList.remove('hidden');
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => ui.classList.add('hidden'), 3000);
+    }
+    ['pointerdown', 'pointermove'].forEach(ev =>
+      document.addEventListener(ev, showUi, { passive: true }));
+    showUi();
+
+    // --- rotate: for portrait-held phones viewing a landscape screen ---
+    document.getElementById('rotate').addEventListener('click', () => {
+      document.body.classList.toggle('rotated');
+    });
+
+    // --- fullscreen ---
+    document.getElementById('fullscreen').addEventListener('click', async () => {
       if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
+        await document.documentElement.requestFullscreen().catch(() => {});
+        // Landscape is almost always what you want for a mirrored desktop.
+        // Not supported everywhere (iOS Safari); ignore failures.
+        try { await screen.orientation.lock('landscape'); } catch {}
       } else {
         document.exitFullscreen();
       }
     });
+    document.addEventListener('fullscreenchange', () => {
+      document.body.classList.toggle('fs', !!document.fullscreenElement);
+    });
 
-    connect();
+    // --- keep the viewer device awake while watching ---
+    let wakeLock = null;
+    async function acquireWakeLock() {
+      try { wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+    }
+    acquireWakeLock();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') acquireWakeLock();
+    });
   </script>
 </body>
 </html>

@@ -7,165 +7,291 @@
 <style>
   :root {
     --bg: #0b0d10;
-    --card: #14171c;
-    --border: #23272f;
+    --card: #13161b;
+    --card2: #171b21;
+    --border: #242a33;
     --text: #eceff3;
-    --muted: #808896;
+    --muted: #7f8794;
     --accent: #4ade80;
+    --accent-dim: rgba(74, 222, 128, 0.12);
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 20px;
     background: var(--bg);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    text-align: center;
+    padding: 48px 24px;
+  }
+  .wrap { max-width: 780px; margin: 0 auto; }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 40px;
   }
   .logo {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 600;
-    margin-bottom: 6px;
   }
   .live {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     font-size: 12.5px;
-    color: var(--accent);
-    margin-bottom: 36px;
+    color: var(--muted);
   }
-  .live .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .live .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+  }
 
-  .headline { font-size: 24px; font-weight: 600; margin: 0 0 8px; }
-  .subline { color: var(--muted); font-size: 15px; margin: 0 0 32px; }
-  .subline b { color: var(--text); font-weight: 500; }
-
-  .qrs {
+  .section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    margin-bottom: 18px;
+  }
+  .section-head {
     display: flex;
-    gap: 28px;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin-bottom: 40px;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
   }
+  .section-head .icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .section-head h2 { font-size: 16px; font-weight: 600; margin: 0; }
+  .section-head .desc { font-size: 13px; color: var(--muted); margin: 2px 0 0; }
+
+  .section-body { margin-top: 20px; }
+
+  .qr-row { display: flex; flex-wrap: wrap; gap: 24px; }
   .qr-block {
     display: flex;
-    flex-direction: column;
+    gap: 20px;
     align-items: center;
     animation: pop .3s ease;
   }
-  @keyframes pop { from { opacity: 0; transform: scale(.96); } }
+  @keyframes pop { from { opacity: 0; transform: translateY(4px); } }
   .qr-card {
     background: #fff;
-    border-radius: 14px;
-    padding: 14px;
-    width: 220px;
+    border-radius: 12px;
+    padding: 11px;
+    width: 168px;
+    flex-shrink: 0;
   }
   .qr-card svg { display: block; width: 100%; height: auto; }
+  .qr-meta { min-width: 0; }
+  .qr-hint { font-size: 13.5px; color: var(--muted); line-height: 1.6; margin-bottom: 10px; }
+  .qr-hint b { color: var(--text); font-weight: 500; }
   .qr-url {
-    margin-top: 12px;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 14px;
-    color: var(--accent);
-  }
-  .qr-tag {
-    margin-top: 4px;
-    font-size: 12px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: .05em;
-  }
-  .qr-tag.new { color: var(--accent); }
-
-  .usb {
-    max-width: 460px;
-    border-top: 1px solid var(--border);
-    padding-top: 24px;
-    color: var(--muted);
     font-size: 13.5px;
-    line-height: 1.7;
+    color: var(--accent);
+    word-break: break-all;
   }
-  .usb b { color: var(--text); font-weight: 500; }
-  .usb .watching {
+  .qr-device {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    margin-top: 10px;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--accent-dim);
+    color: var(--accent);
     font-size: 12.5px;
+    font-weight: 500;
   }
-  .usb .watching .pulse {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: var(--muted);
-    animation: pulse 1.6s ease infinite;
-  }
-  @keyframes pulse { 50% { opacity: .25; } }
 
-  .empty { color: var(--muted); font-size: 14px; margin-bottom: 40px; }
+  .steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: step;
+  }
+  .steps li {
+    counter-increment: step;
+    display: flex;
+    gap: 14px;
+    align-items: baseline;
+    font-size: 13.5px;
+    color: var(--muted);
+    line-height: 1.6;
+    padding: 7px 0;
+  }
+  .steps li::before {
+    content: counter(step);
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 11.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+    top: 4px;
+  }
+  .steps b { color: var(--text); font-weight: 500; }
+  .waiting {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: var(--card2);
+    border: 1px dashed var(--border);
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .waiting .pulse {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.4s ease infinite;
+    flex-shrink: 0;
+  }
+  @keyframes pulse { 50% { opacity: .2; } }
+
+  .none { font-size: 13.5px; color: var(--muted); }
+
+  footer {
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 28px;
+    line-height: 1.7;
+  }
+
+  @media (max-width: 560px) {
+    .qr-block { flex-direction: column; align-items: flex-start; }
+  }
 </style>
 </head>
 <body>
-  <div class="logo">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="4" width="20" height="13" rx="2"/>
-      <path d="M8 21h8M12 17v4"/>
-    </svg>
-    Castview
-  </div>
-  <div class="live"><span class="dot"></span>Sharing this screen on your local network</div>
-
-  <h1 class="headline">Scan with your phone or tablet</h1>
-  <p class="subline">Same WiFi, open the <b>camera</b>, point at the code — the screen opens in the browser.</p>
-
-  <div class="qrs" id="qrs"><div class="empty">Looking for network…</div></div>
-
-  <div class="usb">
-    <b>No WiFi?</b> Plug the device in with a USB cable and turn on
-    <b>USB tethering</b> on it (usually in Settings under Hotspot &amp; tethering).
-    <div class="watching" id="usb-status">
-      <span class="pulse"></span>A new code appears here automatically when connected
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="20" height="13" rx="2"/>
+        <path d="M8 21h8M12 17v4"/>
+      </svg>
+      Castview
     </div>
+    <div class="live"><span class="dot"></span>Sharing on local network</div>
+  </header>
+
+  <div class="section">
+    <div class="section-head">
+      <div class="icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M5 12.5a10 10 0 0 1 14 0M8.5 15.8a5.5 5.5 0 0 1 7 0M12 19h.01"/>
+        </svg>
+      </div>
+      <div>
+        <h2>Over WiFi</h2>
+        <p class="desc">Viewer device must be on the same WiFi network as this computer</p>
+      </div>
+    </div>
+    <div class="section-body" id="wifi-body"><div class="none">Looking for WiFi…</div></div>
   </div>
+
+  <div class="section">
+    <div class="section-head">
+      <div class="icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v11M12 3l-2.5 2.5M12 3l2.5 2.5"/>
+          <circle cx="12" cy="17" r="2.2"/>
+          <path d="M4 17h5.8M14.2 17H20"/>
+        </svg>
+      </div>
+      <div>
+        <h2>Over USB cable</h2>
+        <p class="desc">No WiFi needed — works with just a cable between phone/tablet and this computer</p>
+      </div>
+    </div>
+    <div class="section-body" id="usb-body"></div>
+  </div>
+
+  <footer>
+    Anyone on these networks can view this screen while Castview runs.<br>
+    Close the terminal window or press Ctrl+C to stop sharing.
+  </footer>
+</div>
 
 <script>
-  const qrsEl = document.getElementById('qrs');
-  let known = new Set();
-  let firstLoad = true;
+  const wifiBody = document.getElementById('wifi-body');
+  const usbBody = document.getElementById('usb-body');
+  let lastKey = '';
+
+  const USB_STEPS = `
+    <ol class="steps">
+      <li>Connect the phone or tablet to this computer with a <b>USB cable</b></li>
+      <li>On the device, turn on <b>USB tethering</b> — Settings, search for “tethering” (Android) or Personal Hotspot (iPhone)</li>
+    </ol>
+    <div class="waiting"><span class="pulse"></span>Waiting for a device — its QR code will show up here by itself</div>
+  `;
+
+  function qrBlock(i, hint) {
+    return `
+      <div class="qr-block">
+        <div class="qr-card">${i.qrSvg}</div>
+        <div class="qr-meta">
+          ${i.kind === 'usb' ? `<div class="qr-device">${i.label} connected</div>` : ''}
+          <div class="qr-hint">${hint}</div>
+          <div class="qr-url">${i.url}</div>
+        </div>
+      </div>
+    `;
+  }
 
   async function refresh() {
     try {
       const info = await (await fetch('/api/info')).json();
-      const current = new Set(info.interfaces.map(i => i.address));
+      const key = info.interfaces.map(i => i.kind + i.address).join('|');
+      if (key === lastKey) return;
+      lastKey = key;
 
-      const changed = current.size !== known.size ||
-        [...current].some(a => !known.has(a));
-      if (!changed) return;
+      const wifi = info.interfaces.filter(i => i.kind === 'wifi');
+      const usb = info.interfaces.filter(i => i.kind === 'usb');
+      const other = info.interfaces.filter(i => i.kind === 'ethernet');
 
-      if (!info.interfaces.length) {
-        qrsEl.innerHTML = '<div class="empty">No network connection found. Join WiFi or plug in a USB-tethered device.</div>';
-        known = current;
-        return;
+      wifiBody.innerHTML = wifi.length
+        ? `<div class="qr-row">${wifi.map(i => qrBlock(i,
+            'Open the <b>camera</b> on the viewer device and point it at this code, or type the address into its browser.')).join('')}</div>`
+        : '<div class="none">This computer is not connected to WiFi. Join a network, or use the USB option below.</div>';
+
+      usbBody.innerHTML = usb.length
+        ? `<div class="qr-row">${usb.map(i => qrBlock(i,
+            'Tethering is active. Scan with the <b>camera</b> on the connected device, or open the address in its browser.')).join('')}</div>`
+        : USB_STEPS;
+
+      // Wired networks are rare for this use case; append quietly under WiFi.
+      if (other.length && wifi.length) {
+        wifiBody.innerHTML += `<div class="qr-row" style="margin-top:24px">${other.map(i => qrBlock(i,
+          `Wired network (${i.label}).`)).join('')}</div>`;
+      } else if (other.length && !wifi.length) {
+        wifiBody.innerHTML = `<div class="qr-row">${other.map(i => qrBlock(i,
+          `Wired network (${i.label}). Devices on the same network can scan this.`)).join('')}</div>`;
       }
-
-      qrsEl.innerHTML = info.interfaces.map(i => `
-        <div class="qr-block">
-          <div class="qr-card">${i.qrSvg}</div>
-          <div class="qr-url">${i.url}</div>
-          <div class="qr-tag ${!firstLoad && !known.has(i.address) ? 'new' : ''}">
-            ${!firstLoad && !known.has(i.address) ? 'just connected' : i.name}
-          </div>
-        </div>
-      `).join('');
-
-      known = current;
-      firstLoad = false;
     } catch {
       // server briefly unreachable; keep last known state and retry
     }
