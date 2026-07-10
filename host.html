@@ -11,7 +11,7 @@
     --card2: #171b21;
     --border: #242a33;
     --text: #eceff3;
-    --muted: #7f8794;
+    --muted: #808896;
     --accent: #4ade80;
     --accent-dim: rgba(74, 222, 128, 0.12);
   }
@@ -22,121 +22,124 @@
     background: var(--bg);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    padding: 48px 24px;
+    padding: 40px 24px;
   }
-  .wrap { max-width: 780px; margin: 0 auto; }
+  .wrap { max-width: 820px; margin: 0 auto; }
 
   header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 40px;
+    margin-bottom: 26px;
   }
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 17px;
-    font-weight: 600;
-  }
-  .live {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 12.5px;
-    color: var(--muted);
-  }
+  .logo { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 600; }
+  .live { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }
   .live .dot {
     width: 7px; height: 7px; border-radius: 50%;
     background: var(--accent);
     box-shadow: 0 0 6px var(--accent);
   }
 
-  .section {
+  .banner {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 14px;
-    padding: 28px;
+    padding: 16px 22px;
     margin-bottom: 18px;
-  }
-  .section-head {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 6px;
+    justify-content: space-between;
+    gap: 16px;
   }
-  .section-head .icon {
-    width: 38px; height: 38px;
-    border-radius: 10px;
-    background: var(--card2);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .banner .txt { font-size: 13.5px; color: var(--muted); line-height: 1.6; }
+  .banner .txt b { color: var(--text); font-weight: 500; }
+  .pin {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 28px;
+    letter-spacing: 8px;
     color: var(--accent);
     flex-shrink: 0;
   }
-  .section-head h2 { font-size: 16px; font-weight: 600; margin: 0; }
-  .section-head .desc { font-size: 13px; color: var(--muted); margin: 2px 0 0; }
-
-  .section-body { margin-top: 20px; }
-
-  .qr-row { display: flex; flex-wrap: wrap; gap: 24px; }
-  .qr-block {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-    animation: pop .3s ease;
+  .warn {
+    background: rgba(251, 191, 36, .08);
+    border-color: rgba(251, 191, 36, .25);
+    color: #fbbf24;
+    font-size: 13px;
+    line-height: 1.6;
+    display: none;
   }
-  @keyframes pop { from { opacity: 0; transform: translateY(4px); } }
+
+  .cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  @media (max-width: 640px) { .cards { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .card .head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .card .head svg { color: var(--accent); }
+  .card .tag { font-size: 12.5px; color: var(--muted); margin-bottom: 22px; }
+
   .qr-card {
     background: #fff;
-    border-radius: 12px;
-    padding: 11px;
-    width: 168px;
-    flex-shrink: 0;
+    border-radius: 14px;
+    padding: 13px;
+    width: 200px;
+    margin-bottom: 16px;
+    animation: pop .3s ease;
   }
+  @keyframes pop { from { opacity: 0; transform: scale(.97); } }
   .qr-card svg { display: block; width: 100%; height: auto; }
-  .qr-meta { min-width: 0; }
-  .qr-hint { font-size: 13.5px; color: var(--muted); line-height: 1.6; margin-bottom: 10px; }
-  .qr-hint b { color: var(--text); font-weight: 500; }
-  .qr-url {
+  .url {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 13.5px;
+    font-size: 13px;
     color: var(--accent);
     word-break: break-all;
+    margin-bottom: 18px;
   }
-  .qr-device {
+  .how {
+    font-size: 13.5px;
+    color: var(--muted);
+    line-height: 1.8;
+    max-width: 280px;
+  }
+  .how b { color: var(--text); font-weight: 500; }
+
+  .device-chip {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    margin-bottom: 10px;
-    padding: 4px 10px;
+    gap: 7px;
+    padding: 5px 13px;
     border-radius: 20px;
     background: var(--accent-dim);
     color: var(--accent);
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 500;
+    margin-bottom: 18px;
   }
+  .device-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 
-  .steps {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    counter-reset: step;
-  }
-  .steps li {
-    counter-increment: step;
-    display: flex;
-    gap: 14px;
-    align-items: baseline;
-    font-size: 13.5px;
-    color: var(--muted);
-    line-height: 1.6;
-    padding: 7px 0;
-  }
-  .steps li::before {
-    content: counter(step);
+  .steps { text-align: left; font-size: 13.5px; color: var(--muted); line-height: 2; max-width: 290px; }
+  .steps b { color: var(--text); font-weight: 500; }
+  .steps .row { display: flex; gap: 12px; padding: 4px 0; }
+  .steps .n {
     width: 22px; height: 22px;
     border-radius: 50%;
     background: var(--card2);
@@ -147,21 +150,20 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    position: relative;
-    top: 4px;
+    margin-top: 3px;
   }
-  .steps b { color: var(--text); font-weight: 500; }
   .waiting {
     display: flex;
     align-items: center;
     gap: 9px;
-    margin-top: 16px;
-    padding: 12px 14px;
+    margin-top: 18px;
+    padding: 11px 14px;
     border-radius: 8px;
     background: var(--card2);
     border: 1px dashed var(--border);
-    font-size: 13px;
+    font-size: 12.5px;
     color: var(--muted);
+    text-align: left;
   }
   .waiting .pulse {
     width: 8px; height: 8px; border-radius: 50%;
@@ -171,18 +173,14 @@
   }
   @keyframes pulse { 50% { opacity: .2; } }
 
-  .none { font-size: 13.5px; color: var(--muted); }
+  .none { font-size: 13.5px; color: var(--muted); padding: 20px 0; }
 
   footer {
     text-align: center;
     font-size: 12.5px;
     color: var(--muted);
-    margin-top: 28px;
-    line-height: 1.7;
-  }
-
-  @media (max-width: 560px) {
-    .qr-block { flex-direction: column; align-items: flex-start; }
+    margin-top: 26px;
+    line-height: 1.8;
   }
 </style>
 </head>
@@ -196,55 +194,47 @@
       </svg>
       Castview
     </div>
-    <div class="live"><span class="dot"></span>Sharing on local network</div>
+    <div class="live"><span class="dot"></span>Sharing is on</div>
   </header>
 
-  <div id="pin-banner" style="display:none; align-items:center; justify-content:space-between; gap:16px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 22px; margin-bottom:18px;">
-    <div style="font-size:13.5px; color:var(--muted); line-height:1.6;">
-      Scanning a QR connects instantly. Typing the address by hand? The viewer will ask for this PIN.
-    </div>
-    <div id="pin-value" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:26px; letter-spacing:6px; color:var(--accent); flex-shrink:0;"></div>
+  <div class="banner" id="pin-banner" style="display:none">
+    <div class="txt"><b>PIN for this session.</b> Scanning a code connects without it. Only needed if someone types the address by hand. A new PIN is made every time Castview starts.</div>
+    <div class="pin" id="pin-value"></div>
   </div>
 
-  <div id="ffmpeg-banner" style="display:none; background:rgba(251,191,36,.08); border:1px solid rgba(251,191,36,.25); border-radius:14px; padding:14px 22px; margin-bottom:18px; font-size:13px; color:#fbbf24; line-height:1.6;">
-    Running in basic mode — install <b>ffmpeg</b> and restart for a much smoother stream (ffmpeg.org, a portable build on PATH is enough).
+  <div class="banner warn" id="ffmpeg-banner">
+    Running in basic mode — the stream will look choppy. Install <b>ffmpeg</b> (ffmpeg.org) and restart Castview for smooth streaming.
   </div>
 
-  <div class="section">
-    <div class="section-head">
-      <div class="icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+  <div class="cards">
+    <div class="card">
+      <div class="head">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
           <path d="M5 12.5a10 10 0 0 1 14 0M8.5 15.8a5.5 5.5 0 0 1 7 0M12 19h.01"/>
         </svg>
+        WiFi
       </div>
-      <div>
-        <h2>Over WiFi</h2>
-        <p class="desc">Viewer device must be on the same WiFi network as this computer</p>
-      </div>
+      <div class="tag">Both devices on the same WiFi</div>
+      <div id="wifi-body"><div class="none">Looking for WiFi…</div></div>
     </div>
-    <div class="section-body" id="wifi-body"><div class="none">Looking for WiFi…</div></div>
-  </div>
 
-  <div class="section">
-    <div class="section-head">
-      <div class="icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <div class="card">
+      <div class="head">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 3v11M12 3l-2.5 2.5M12 3l2.5 2.5"/>
           <circle cx="12" cy="17" r="2.2"/>
           <path d="M4 17h5.8M14.2 17H20"/>
         </svg>
+        USB cable
       </div>
-      <div>
-        <h2>Over USB cable</h2>
-        <p class="desc">No WiFi needed — works with just a cable between phone/tablet and this computer</p>
-      </div>
+      <div class="tag">No WiFi? A cable is enough</div>
+      <div id="usb-body"></div>
     </div>
-    <div class="section-body" id="usb-body"></div>
   </div>
 
   <footer>
-    Anyone on these networks can view this screen while Castview runs.<br>
-    Close the terminal window or press Ctrl+C to stop sharing.
+    People on your network can see this screen while sharing is on.<br>
+    To stop: press Ctrl+C in the terminal, or close it.
   </footer>
 </div>
 
@@ -254,23 +244,19 @@
   let lastKey = '';
 
   const USB_STEPS = `
-    <ol class="steps">
-      <li>Connect the phone or tablet to this computer with a <b>USB cable</b></li>
-      <li>On the device, turn on <b>USB tethering</b> — Settings, search for “tethering” (Android) or Personal Hotspot (iPhone)</li>
-    </ol>
-    <div class="waiting"><span class="pulse"></span>Waiting for a device — its QR code will show up here by itself</div>
+    <div class="steps">
+      <div class="row"><span class="n">1</span><span>Connect your phone or tablet with a <b>USB cable</b></span></div>
+      <div class="row"><span class="n">2</span><span>On the phone, turn on <b>USB tethering</b> — find it in Settings by searching "tethering"</span></div>
+    </div>
+    <div class="waiting"><span class="pulse"></span>Waiting — a code will appear here on its own</div>
   `;
 
-  function qrBlock(i, hint) {
+  function qrBlock(i, chip) {
     return `
-      <div class="qr-block">
-        <div class="qr-card">${i.qrSvg}</div>
-        <div class="qr-meta">
-          ${i.kind === 'usb' ? `<div class="qr-device">${i.label} connected</div>` : ''}
-          <div class="qr-hint">${hint}</div>
-          <div class="qr-url">${i.url}</div>
-        </div>
-      </div>
+      ${chip ? `<div class="device-chip"><span class="dot"></span>${i.label} connected</div>` : ''}
+      <div class="qr-card">${i.qrSvg}</div>
+      <div class="url">${i.url}</div>
+      <div class="how">Open the <b>camera</b> on the other device and point it at this code. Or type the address in its browser.</div>
     `;
   }
 
@@ -282,7 +268,7 @@
         document.getElementById('pin-value').textContent = info.pin;
         document.getElementById('pin-banner').style.display = 'flex';
       }
-      document.getElementById('ffmpeg-banner').style.display = info.ffmpeg ? 'none' : 'block';
+      document.getElementById('ffmpeg-banner').style.display = info.ffmpeg ? 'none' : 'flex';
 
       const key = info.interfaces.map(i => i.kind + i.address).join('|');
       if (key === lastKey) return;
@@ -290,26 +276,18 @@
 
       const wifi = info.interfaces.filter(i => i.kind === 'wifi');
       const usb = info.interfaces.filter(i => i.kind === 'usb');
-      const other = info.interfaces.filter(i => i.kind === 'ethernet');
+      const wired = info.interfaces.filter(i => i.kind === 'ethernet');
 
-      wifiBody.innerHTML = wifi.length
-        ? `<div class="qr-row">${wifi.map(i => qrBlock(i,
-            'Open the <b>camera</b> on the viewer device and point it at this code, or type the address into its browser.')).join('')}</div>`
-        : '<div class="none">This computer is not connected to WiFi. Join a network, or use the USB option below.</div>';
+      // Wired networks behave like WiFi for the viewer; show them there.
+      const wifiLike = [...wifi, ...wired];
+
+      wifiBody.innerHTML = wifiLike.length
+        ? wifiLike.map(i => qrBlock(i, false)).join('<div style="height:26px"></div>')
+        : '<div class="none">This computer has no WiFi connection.<br>Use the USB option instead.</div>';
 
       usbBody.innerHTML = usb.length
-        ? `<div class="qr-row">${usb.map(i => qrBlock(i,
-            'Tethering is active. Scan with the <b>camera</b> on the connected device, or open the address in its browser.')).join('')}</div>`
+        ? usb.map(i => qrBlock(i, true)).join('<div style="height:26px"></div>')
         : USB_STEPS;
-
-      // Wired networks are rare for this use case; append quietly under WiFi.
-      if (other.length && wifi.length) {
-        wifiBody.innerHTML += `<div class="qr-row" style="margin-top:24px">${other.map(i => qrBlock(i,
-          `Wired network (${i.label}).`)).join('')}</div>`;
-      } else if (other.length && !wifi.length) {
-        wifiBody.innerHTML = `<div class="qr-row">${other.map(i => qrBlock(i,
-          `Wired network (${i.label}). Devices on the same network can scan this.`)).join('')}</div>`;
-      }
     } catch {
       // server briefly unreachable; keep last known state and retry
     }

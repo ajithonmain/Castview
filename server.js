@@ -19,7 +19,7 @@ const PIN = process.env.PIN === 'off' ? null
 
 // Quality presets, switchable live from the viewer.
 const QUALITY_PRESETS = {
-  sharp: { maxWidth: 1600, q: 5 },
+  sharp: { maxWidth: 1920, q: 4 },
   smooth: { maxWidth: 1100, q: 12 },
 };
 let quality = process.env.QUALITY === 'smooth' ? 'smooth' : 'sharp';

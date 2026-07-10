@@ -38,11 +38,8 @@
     position: fixed;
     inset: 0;
     pointer-events: none;
-    opacity: 1;
-    transition: opacity .35s ease;
     z-index: 10;
   }
-  #ui.hidden { opacity: 0; }
 
   #status {
     position: absolute;
@@ -77,21 +74,25 @@
     pointer-events: auto;
   }
   .btn {
-    width: 38px; height: 38px;
-    border-radius: 50%;
-    border: none;
-    background: rgba(20, 22, 26, 0.65);
+    min-width: 58px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(20, 22, 26, 0.75);
     backdrop-filter: blur(6px);
-    color: rgba(255, 255, 255, 0.85);
+    color: rgba(255, 255, 255, 0.9);
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 4px;
     cursor: pointer;
-    padding: 0;
+    padding: 8px 10px;
   }
-  .btn:active { background: rgba(60, 64, 70, 0.75); }
+  .btn:active { background: rgba(60, 64, 70, 0.8); }
   .btn svg { display: block; }
-  .btn.on { color: #4ade80; }
+  .btn .lbl { font-size: 10.5px; letter-spacing: .02em; color: rgba(255,255,255,.7); }
+  .btn.on { color: #4ade80; border-color: rgba(74, 222, 128, .4); }
+  .btn.on .lbl { color: #4ade80; }
   #fs-exit { display: none; }
   body.fs #fs-enter { display: none; }
   body.fs #fs-exit { display: block; }
@@ -142,32 +143,34 @@
   <div id="ui">
     <div id="status" class="reconnecting"><span class="dot"></span><span class="label">Connecting…</span></div>
     <div class="controls">
-      <button class="btn" id="quality" title="Toggle smooth / sharp">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <button class="btn" id="quality" title="Switch between best quality and fastest streaming">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 14l4-6"/>
           <path d="M4 17a9 9 0 0 1 16 0"/>
         </svg>
+        <span class="lbl" id="quality-lbl">HD</span>
       </button>
-      <button class="btn" id="rotate" title="Rotate view">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <button class="btn" id="rotate" title="Rotate the picture 90 degrees">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 11A8 8 0 1 0 12 20"/>
           <path d="M20 6v5h-5"/>
         </svg>
+        <span class="lbl">Rotate</span>
       </button>
-      <button class="btn" id="fullscreen" title="Fullscreen">
-        <svg id="fs-enter" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <button class="btn" id="fullscreen" title="Use the whole screen">
+        <svg id="fs-enter" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
         </svg>
-        <svg id="fs-exit" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg id="fs-exit" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>
         </svg>
+        <span class="lbl">Full screen</span>
       </button>
     </div>
   </div>
 
   <script>
     const img = document.getElementById('screen');
-    const ui = document.getElementById('ui');
     const statusEl = document.getElementById('status');
     const pinOverlay = document.getElementById('pin-overlay');
     const pinInput = document.getElementById('pin-input');
@@ -236,23 +239,14 @@
     }
     connect();
 
-    // --- controls auto-hide: fade out when idle, any tap/move brings back ---
-    let hideTimer = null;
-    function showUi() {
-      ui.classList.remove('hidden');
-      clearTimeout(hideTimer);
-      hideTimer = setTimeout(() => ui.classList.add('hidden'), 3000);
-    }
-    ['pointerdown', 'pointermove'].forEach(ev =>
-      document.addEventListener(ev, showUi, { passive: true }));
-    showUi();
-
-    // --- quality: smooth (smaller, faster) vs sharp (default) ---
+    // --- quality: HD (default) vs Fast (smaller frames for weak WiFi) ---
     const qualityBtn = document.getElementById('quality');
+    const qualityLbl = document.getElementById('quality-lbl');
     let smooth = false;
     qualityBtn.addEventListener('click', () => {
       smooth = !smooth;
       qualityBtn.classList.toggle('on', smooth);
+      qualityLbl.textContent = smooth ? 'Fast' : 'HD';
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'quality', value: smooth ? 'smooth' : 'sharp' }));
       }
