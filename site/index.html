@@ -375,6 +375,33 @@
   footer a { color: var(--muted); text-decoration: none; transition: color .15s; }
   footer a:hover { color: var(--text); }
   footer .links { display: flex; gap: 22px; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 860px) {
+    section { padding: 64px 0; }
+    .hero { padding: 72px 0 44px; }
+  }
+  @media (max-width: 640px) {
+    .hero { padding: 56px 0 36px; }
+    section { padding: 52px 0; }
+    .section-sub { margin-bottom: 34px; }
+    .cmd { font-size: 15px; padding: 15px 20px; gap: 12px; max-width: 100%; }
+    .cmd-note { padding: 0 12px; }
+    .demo { padding: 44px 0 16px; gap: 20px; }
+    .terminal pre { font-size: 11px; padding: 14px 16px 18px; }
+    .phone { width: 128px; }
+    .phone .screen-mock { height: 206px; }
+    .badge { font-size: 12px; padding: 5px 13px; }
+    .flow, .grid { gap: 14px; }
+    .step, .feature { padding: 22px 20px; }
+    .story .quote-mark { font-size: 42px; }
+    .story p { font-size: 15px; }
+    footer .row { flex-direction: column; align-items: flex-start; gap: 12px; }
+  }
+  @media (max-width: 380px) {
+    .cmd { font-size: 13.5px; padding: 13px 16px; }
+    h1 { letter-spacing: -0.02em; }
+  }
 </style>
 </head>
 <body>

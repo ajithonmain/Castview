@@ -74,6 +74,21 @@ const server = http.createServer((req, res) => {
       });
     return;
   }
+  // Stop sharing from the setup page. Only the mirrored machine may call it.
+  if (req.method === 'POST' && url.pathname === '/api/stop') {
+    if (!isLocalRequest(req)) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'forbidden' }));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }), () => {
+      console.log('Stopped from setup page');
+      stopCapture();
+      process.exit(0);
+    });
+    return;
+  }
   res.writeHead(404, { 'Content-Type': 'text/plain' });
   res.end('Not found');
 });
