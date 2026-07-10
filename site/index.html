@@ -20,9 +20,9 @@
     --border-hover: #2e3540;
     --text: #f0f2f5;
     --muted: #848d9c;
-    --accent: #4ade80;
-    --accent-soft: rgba(74, 222, 128, 0.08);
-    --accent-border: rgba(74, 222, 128, 0.25);
+    --accent: #e11ea6;
+    --accent-soft: rgba(225, 30, 166, 0.08);
+    --accent-border: rgba(225, 30, 166, 0.25);
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; margin: 0; }
@@ -36,7 +36,7 @@
     overflow-x: hidden;
   }
   .wrap { max-width: 1020px; margin: 0 auto; padding: 0 24px; }
-  ::selection { background: rgba(74, 222, 128, 0.25); }
+  ::selection { background: rgba(225, 30, 166, 0.25); }
 
   /* ---------- nav ---------- */
   nav {
@@ -94,7 +94,7 @@
     transform: translateX(-50%);
     width: 720px;
     height: 480px;
-    background: radial-gradient(ellipse at center, rgba(74, 222, 128, 0.09), transparent 65%);
+    background: radial-gradient(ellipse at center, rgba(225, 30, 166, 0.09), transparent 65%);
     pointer-events: none;
   }
   .badge {
@@ -125,7 +125,7 @@
     margin: 0 auto 22px;
   }
   h1 .accent {
-    background: linear-gradient(120deg, #4ade80, #86efac);
+    background: linear-gradient(120deg, #e11ea6, #e879f9);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -151,11 +151,11 @@
     font-size: 17px;
     cursor: pointer;
     transition: border-color .2s, box-shadow .2s;
-    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+    box-shadow: 0 0 0 0 rgba(225, 30, 166, 0);
   }
   .cmd:hover {
     border-color: var(--accent-border);
-    box-shadow: 0 0 32px -8px rgba(74, 222, 128, 0.25);
+    box-shadow: 0 0 32px -8px rgba(225, 30, 166, 0.25);
   }
   .cmd .dollar { color: var(--accent); user-select: none; }
   .cmd .copy { color: var(--muted); display: flex; transition: color .15s; }
@@ -211,7 +211,7 @@
     height: 240px;
     border-radius: 14px;
     background:
-      linear-gradient(160deg, rgba(74,222,128,.14), transparent 45%),
+      linear-gradient(160deg, rgba(225, 30, 166,.14), transparent 45%),
       repeating-linear-gradient(0deg, #12161c 0 34px, #151a21 34px 68px);
     border: 1px solid var(--border);
     position: relative;
