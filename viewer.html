@@ -45,8 +45,8 @@
 
   #status {
     position: absolute;
-    top: calc(10px + env(safe-area-inset-top));
-    left: calc(12px + env(safe-area-inset-left));
+    bottom: calc(62px + env(safe-area-inset-bottom));
+    left: calc(16px + env(safe-area-inset-left));
     display: flex;
     align-items: center;
     gap: 7px;
@@ -69,32 +69,57 @@
 
   .controls {
     position: absolute;
-    top: calc(8px + env(safe-area-inset-top));
-    right: calc(10px + env(safe-area-inset-right));
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    left: calc(12px + env(safe-area-inset-left));
     display: flex;
-    gap: 8px;
-    pointer-events: auto;
-  }
-  .btn {
-    min-width: 58px;
-    border-radius: 10px;
+    align-items: center;
+    background: rgba(16, 18, 22, 0.82);
+    backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(20, 22, 26, 0.75);
-    backdrop-filter: blur(6px);
-    color: rgba(255, 255, 255, 0.9);
+    border-radius: 999px;
+    pointer-events: auto;
+    overflow: hidden;
+    transition: opacity .2s;
+  }
+  .handle {
+    width: 40px; height: 40px;
+    border: none;
+    background: none;
+    color: rgba(255, 255, 255, 0.85);
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
     cursor: pointer;
-    padding: 8px 10px;
+    flex-shrink: 0;
+    padding: 0;
   }
-  .btn:active { background: rgba(60, 64, 70, 0.8); }
-  .btn svg { display: block; }
-  .btn .lbl { font-size: 10.5px; letter-spacing: .02em; color: rgba(255,255,255,.7); }
-  .btn.on { color: #e11ea6; border-color: rgba(225, 30, 166, .4); }
-  .btn.on .lbl { color: #e11ea6; }
+  .handle svg { display: block; transition: transform .25s ease; }
+  .controls.open .handle svg { transform: rotate(180deg); }
+  .tray {
+    display: flex;
+    align-items: center;
+    max-width: 0;
+    opacity: 0;
+    transition: max-width .28s ease, opacity .2s ease;
+  }
+  .controls.open .tray { max-width: 400px; opacity: 1; }
+  .btn {
+    border: none;
+    background: none;
+    color: rgba(255, 255, 255, 0.85);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    padding: 10px 14px;
+    font-family: inherit;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .btn + .btn { border-left: 1px solid rgba(255, 255, 255, 0.1); }
+  .btn:active { background: rgba(255, 255, 255, 0.08); }
+  .btn svg { display: block; flex-shrink: 0; }
+  .btn.on { color: #e879f9; }
   #fs-exit { display: none; }
   body.fs #fs-enter { display: none; }
   body.fs #fs-exit { display: block; }
@@ -145,30 +170,37 @@
 
   <div id="ui">
     <div id="status" class="reconnecting"><span class="dot"></span><span class="label">Connecting…</span></div>
-    <div class="controls">
-      <button class="btn" id="quality" title="Switch between best quality and fastest streaming">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 14l4-6"/>
-          <path d="M4 17a9 9 0 0 1 16 0"/>
+    <div class="controls" id="controls">
+      <button class="handle" id="handle" title="Show controls">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 6l6 6-6 6"/>
         </svg>
-        <span class="lbl" id="quality-lbl">HD</span>
       </button>
-      <button class="btn" id="rotate" title="Rotate the picture 90 degrees">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 11A8 8 0 1 0 12 20"/>
-          <path d="M20 6v5h-5"/>
-        </svg>
-        <span class="lbl">Rotate</span>
-      </button>
-      <button class="btn" id="fullscreen" title="Use the whole screen">
-        <svg id="fs-enter" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
-        </svg>
-        <svg id="fs-exit" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>
-        </svg>
-        <span class="lbl">Full screen</span>
-      </button>
+      <div class="tray">
+        <button class="btn" id="quality" title="Sharpest picture uses more WiFi and can lag; Fast mode is smoother on weak connections">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 14l4-6"/>
+            <path d="M4 17a9 9 0 0 1 16 0"/>
+          </svg>
+          <span id="quality-lbl">Quality: HD</span>
+        </button>
+        <button class="btn" id="rotate" title="Rotate the picture 90 degrees">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 11A8 8 0 1 0 12 20"/>
+            <path d="M20 6v5h-5"/>
+          </svg>
+          Rotate
+        </button>
+        <button class="btn" id="fullscreen" title="Use the whole screen">
+          <svg id="fs-enter" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
+          </svg>
+          <svg id="fs-exit" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>
+          </svg>
+          Full screen
+        </button>
+      </div>
     </div>
   </div>
 
@@ -242,6 +274,19 @@
     }
     connect();
 
+    // --- collapsible control pill: closed by default, auto-closes when idle ---
+    const controls = document.getElementById('controls');
+    let collapseTimer = null;
+    function scheduleCollapse() {
+      clearTimeout(collapseTimer);
+      collapseTimer = setTimeout(() => controls.classList.remove('open'), 8000);
+    }
+    document.getElementById('handle').addEventListener('click', () => {
+      controls.classList.toggle('open');
+      if (controls.classList.contains('open')) scheduleCollapse();
+    });
+    controls.addEventListener('pointerdown', scheduleCollapse);
+
     // --- quality: HD (default) vs Fast (smaller frames for weak WiFi) ---
     const qualityBtn = document.getElementById('quality');
     const qualityLbl = document.getElementById('quality-lbl');
@@ -249,7 +294,7 @@
     qualityBtn.addEventListener('click', () => {
       smooth = !smooth;
       qualityBtn.classList.toggle('on', smooth);
-      qualityLbl.textContent = smooth ? 'Fast' : 'HD';
+      qualityLbl.textContent = smooth ? 'Quality: Fast' : 'Quality: HD';
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'quality', value: smooth ? 'smooth' : 'sharp' }));
       }
