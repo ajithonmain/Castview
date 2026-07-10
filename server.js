@@ -185,11 +185,15 @@ function startFfmpeg() {
     '-f', 'mjpeg',
     'pipe:1',
   ];
-  ffmpegProc = spawn('ffmpeg', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  ffmpegProc = proc;
 
   // Extract complete JPEGs from the MJPEG byte stream (SOI ffd8 .. EOI ffd9).
   let buf = Buffer.alloc(0);
-  ffmpegProc.stdout.on('data', (chunk) => {
+  proc.stdout.on('data', (chunk) => {
+    // A replaced process (quality switch) may still flush frames while dying;
+    // drop them so two encoders never interleave.
+    if (ffmpegProc !== proc) return;
     buf = Buffer.concat([buf, chunk]);
     let start;
     while ((start = buf.indexOf('\xff\xd8', 0, 'binary')) !== -1) {
@@ -202,12 +206,16 @@ function startFfmpeg() {
     if (buf.length > 32 * 1024 * 1024) buf = Buffer.alloc(0);
   });
 
-  ffmpegProc.stderr.on('data', (d) => console.error('ffmpeg:', d.toString().trim()));
+  proc.stderr.on('data', (d) => console.error('ffmpeg:', d.toString().trim()));
 
-  ffmpegProc.on('exit', (code, signal) => {
+  proc.on('exit', (code) => {
+    // If we were replaced or deliberately stopped, ffmpegProc no longer
+    // points at us — that exit is expected, don't null the new process or
+    // schedule a restart. (ffmpeg traps SIGTERM and exits code 255 with no
+    // signal, so exit codes can't distinguish our kill from a crash.)
+    if (ffmpegProc !== proc) return;
     ffmpegProc = null;
-    // Only restart on unexpected death, not when we killed it ourselves.
-    if (signal !== 'SIGTERM' && authedClients().length > 0) {
+    if (authedClients().length > 0) {
       console.error(`ffmpeg exited (code ${code}), restarting in 1s`);
       ffmpegRestartTimer = setTimeout(() => {
         ffmpegRestartTimer = null;
@@ -225,8 +233,9 @@ function stopFfmpeg() {
     ffmpegRestartTimer = null;
   }
   if (!ffmpegProc) return;
-  ffmpegProc.kill('SIGTERM');
+  const proc = ffmpegProc;
   ffmpegProc = null;
+  proc.kill('SIGTERM');
 }
 
 // --- screenshot fallback: used when ffmpeg is not installed ---
