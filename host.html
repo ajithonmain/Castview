@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Castview — Connect a Viewer</title>
+<style>
+  :root {
+    --bg: #0d0f12;
+    --card: #16191e;
+    --border: #262b33;
+    --text: #e6e9ed;
+    --muted: #8b93a1;
+    --accent: #4ade80;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 20px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h1 svg { flex-shrink: 0; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 28px; }
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    color: var(--accent);
+    margin-bottom: 24px;
+  }
+  .status .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+  }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px) { .cards { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px;
+  }
+  .card h2 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card h2 svg { color: var(--muted); flex-shrink: 0; }
+  ol {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--muted);
+    font-size: 13.5px;
+    line-height: 1.9;
+  }
+  ol b { color: var(--text); font-weight: 500; }
+  .qr-list { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 16px; }
+  .qr-item {
+    background: #fff;
+    border-radius: 8px;
+    padding: 10px;
+    width: 150px;
+  }
+  .qr-item svg { display: block; width: 100%; height: auto; }
+  .qr-label {
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: left;
+  }
+  .qr-block { display: flex; flex-direction: column; }
+  .url {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    color: var(--accent);
+    word-break: break-all;
+  }
+  .adapter { color: var(--muted); }
+  .empty { color: var(--muted); font-size: 13.5px; }
+  .note {
+    margin-top: 28px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="20" height="13" rx="2"/>
+      <path d="M8 21h8M12 17v4"/>
+    </svg>
+    Castview
+  </h1>
+  <p class="sub">Mirror this screen to any device with a browser — nothing to install on the viewer.</p>
+  <div class="status"><span class="dot"></span>Server running</div>
+
+  <div class="cards">
+    <div class="card">
+      <h2>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M5 12.5a10 10 0 0 1 14 0M8.5 15.8a5.5 5.5 0 0 1 7 0M12 19h.01"/>
+        </svg>
+        WiFi — same network
+      </h2>
+      <ol>
+        <li>Connect viewer device to <b>same WiFi</b> as this computer</li>
+        <li><b>Scan a QR code</b> below with the device camera, or type the address in Chrome</li>
+      </ol>
+      <div class="qr-list" id="qr-list"><span class="empty">Loading addresses…</span></div>
+    </div>
+
+    <div class="card">
+      <h2>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v12M12 3l-2.5 2.5M12 3l2.5 2.5"/>
+          <circle cx="12" cy="18" r="2"/>
+          <path d="M5 18h5M14 18h5"/>
+        </svg>
+        USB cable — no WiFi needed
+      </h2>
+      <ol>
+        <li>Connect tablet/phone to this computer with a <b>USB cable</b></li>
+        <li>On the device, enable <b>USB tethering</b> (Settings → Network → Hotspot &amp; tethering)</li>
+        <li>Wait a few seconds — a new network adapter appears here automatically</li>
+        <li><b>Restart Castview</b> (Ctrl+C, then <span class="url">node server.js</span>) and use the new address it prints, or refresh this page</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="note">
+    Viewers on your network can watch this screen while the server runs. Stop it with Ctrl+C in the terminal when done. The stream stays inside your local network — nothing goes over the internet.
+  </div>
+</div>
+
+<script>
+  fetch('/api/info')
+    .then(r => r.json())
+    .then(info => {
+      const list = document.getElementById('qr-list');
+      if (!info.interfaces.length) {
+        list.innerHTML = '<span class="empty">No network found. Connect to WiFi or plug in a tethered device, then refresh.</span>';
+        return;
+      }
+      list.innerHTML = info.interfaces.map(i => `
+        <div class="qr-block">
+          <div class="qr-item">${i.qrSvg}</div>
+          <div class="qr-label">
+            <div class="url">${i.url}</div>
+            <div class="adapter">${i.name}</div>
+          </div>
+        </div>
+      `).join('');
+    })
+    .catch(() => {
+      document.getElementById('qr-list').innerHTML = '<span class="empty">Could not load addresses.</span>';
+    });
+</script>
+</body>
+</html>

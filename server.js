@@ -5,6 +5,7 @@ const path = require('path');
 const { execFile, execFileSync, spawn } = require('child_process');
 const WebSocket = require('ws');
 const screenshot = require('screenshot-desktop');
+const QRCode = require('qrcode');
 
 const PORT = Number(process.env.PORT) || 8080;
 const FPS = Number(process.env.FPS) || 15;
@@ -12,11 +13,35 @@ const MAX_WIDTH = Number(process.env.MAX_WIDTH) || 1600;
 const JPEG_QUALITY = Number(process.env.JPEG_QUALITY) || 7; // ffmpeg -q:v scale, 2 (best) to 31 (worst)
 
 const viewerHtml = fs.readFileSync(path.join(__dirname, 'viewer.html'));
+const hostHtml = fs.readFileSync(path.join(__dirname, 'host.html'));
 
 const server = http.createServer((req, res) => {
   if (req.method === 'GET' && req.url === '/') {
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(viewerHtml);
+    return;
+  }
+  if (req.method === 'GET' && req.url === '/host') {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(hostHtml);
+    return;
+  }
+  if (req.method === 'GET' && req.url === '/api/info') {
+    Promise.all(
+      getLocalIps().map(async ({ name, address }) => {
+        const url = `http://${address}:${PORT}`;
+        const qrSvg = await QRCode.toString(url, { type: 'svg', margin: 1 });
+        return { name, address, url, qrSvg };
+      })
+    )
+      .then((interfaces) => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ port: PORT, interfaces }));
+      })
+      .catch((err) => {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      });
     return;
   }
   res.writeHead(404, { 'Content-Type': 'text/plain' });
@@ -211,16 +236,20 @@ function getLocalIps() {
   return ips;
 }
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log('Castview server running');
   console.log(`Port: ${PORT}`);
   const ips = getLocalIps();
   if (ips.length === 0) {
     console.log('No non-internal IPv4 interfaces found. Check your network connection.');
-  } else {
-    console.log('Open one of these on your tablet/phone browser:');
-    for (const { name, address } of ips) {
-      console.log(`  http://${address}:${PORT}   (${name})`);
-    }
+    return;
   }
+  console.log('Open one of these on your tablet/phone browser:');
+  for (const { name, address } of ips) {
+    console.log(`  http://${address}:${PORT}   (${name})`);
+  }
+  console.log(`Setup page with QR codes (open on this computer): http://localhost:${PORT}/host`);
+  const url = `http://${ips[0].address}:${PORT}`;
+  console.log(`\nScan to view (${url}):`);
+  console.log(await QRCode.toString(url, { type: 'terminal', small: true }));
 });

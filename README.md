@@ -24,8 +24,13 @@ Open one of these on your tablet/phone browser:
   http://192.168.1.42:8080   (en0)
 ```
 
+A QR code for the first address is printed in the terminal — scan it with the viewer device's camera to open the stream directly.
+
 ## Viewing
 Open the printed address in a browser (Chrome recommended) on your tablet, phone, or another laptop — no app install required.
+
+## Setup page (host side)
+Open `http://localhost:8080/host` on the computer being mirrored for a guided setup page: connection instructions for WiFi and USB tethering, plus scannable QR codes for every network adapter.
 
 ## Network Setup
 - **WiFi (same network):** connect both devices to the same WiFi, use the printed IP.
