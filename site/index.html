@@ -528,7 +528,7 @@ Scan to view: <span class="w">[QR code]</span></pre>
       <div class="quote-mark">&ldquo;</div>
       <p>My laptop's display died. The machine underneath was fine — it booted, the fans spun, everything worked — I just couldn't see any of it. Every fix I found wanted me to install remote desktop software on a computer I couldn't operate, or buy a capture card I didn't have time to wait for.</p>
       <p>So I built Castview. One command I could type blind into a terminal, and my tablet became the laptop's screen — over nothing but the USB cable that was already on my desk.</p>
-      <p class="dim">If that's the situation you're in right now: plug your phone into the laptop, enable USB tethering, type <code>npx castview</code> and press enter. Then point your phone camera at the screen area where a QR code should be — or just open the address your phone's browser suggests. It works. That's why this exists.</p>
+      <p class="dim">If that's the situation you're in right now: plug your phone into the laptop, turn on USB tethering, type <code>npx castview --no-pin</code> blind and press enter. Then open your phone's browser and try addresses like <code>192.168.42.x:8080</code> — the range Android tethering usually hands out. Your screen appears. That's why this exists.</p>
       <div class="author">
         <div class="avatar">AJ</div>
         <div>

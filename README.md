@@ -54,7 +54,7 @@ Environment variables, all optional:
 |---|---|---|
 | `PORT` | `8080` | HTTP/WebSocket port |
 | `FPS` | `15` | Target frame rate |
-| `PIN` | random | Access PIN; set a fixed one, or `PIN=off` to disable |
+| `PIN` | random | Access PIN; set a fixed one, or disable with `PIN=off` / `--no-pin` (use `--no-pin` when the host screen is unreadable) |
 | `QUALITY` | `sharp` | `sharp` or `smooth` (smaller frames for weak WiFi) |
 | `SCREEN` | `0` | Display index to capture (macOS) |
 | `NO_OPEN` | unset | Set to `1` to skip auto-opening the setup page |

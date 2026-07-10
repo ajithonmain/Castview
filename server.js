@@ -13,8 +13,10 @@ const FPS = Number(process.env.FPS) || 15;
 const SCREEN = Number(process.env.SCREEN) || 0;
 
 // Access PIN: viewers must present it to receive the stream. QR codes embed
-// it, so scanning just works; manual typers enter it once. PIN=off disables.
-const PIN = process.env.PIN === 'off' ? null
+// it, so scanning just works; manual typers enter it once. Disable with
+// --no-pin or PIN=off — essential when the host screen is dead and the PIN
+// can't be read.
+const PIN = process.argv.includes('--no-pin') || process.env.PIN === 'off' ? null
   : process.env.PIN || String(Math.floor(1000 + Math.random() * 9000));
 
 // Quality presets, switchable live from the viewer.
