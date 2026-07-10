@@ -215,6 +215,16 @@ wss.on('connection', (ws) => {
   });
 });
 
+// Open the host setup page in the default browser (best effort; NO_OPEN=1 disables).
+function openHostPage(url) {
+  if (process.env.NO_OPEN) return;
+  const cmd = process.platform === 'darwin' ? 'open'
+    : process.platform === 'win32' ? 'cmd'
+    : 'xdg-open';
+  const args = process.platform === 'win32' ? ['/c', 'start', '', url] : [url];
+  execFile(cmd, args, () => {});
+}
+
 // Kill the ffmpeg child when the server dies, so it isn't orphaned.
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, () => {
@@ -252,4 +262,5 @@ server.listen(PORT, async () => {
   const url = `http://${ips[0].address}:${PORT}`;
   console.log(`\nScan to view (${url}):`);
   console.log(await QRCode.toString(url, { type: 'terminal', small: true }));
+  openHostPage(`http://localhost:${PORT}/host`);
 });

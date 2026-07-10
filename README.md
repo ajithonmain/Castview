@@ -1,44 +1,76 @@
 # Castview
 
-Mirror a laptop's screen (Windows or Mac) to a browser on any device on the same network — no admin rights, no app install on the viewer side, no capture card.
+Mirror a laptop's screen (Windows, Mac, or Linux) to any device with a browser — phone, tablet, another computer. No admin rights, nothing to install on the viewing device, no capture card.
 
-## Requirements
-- Node.js installed on the laptop being mirrored
-- No admin/sudo rights needed, no build tools required (pure-JS dependencies only)
+Born from a real problem: a laptop with a broken display, and a tablet that could stand in as its screen.
 
-## Setup
-```bash
-npm install
+## How it works
+
 ```
-This installs pure-JS dependencies only — no native build step.
+[Your computer]                        [Any device with a browser]
+  node server.js                          scan QR / open URL
+  ├─ captures the screen                  └─ live view of your screen
+  ├─ streams JPEG frames over WebSocket
+  └─ serves the viewer page
+```
 
-## Run
+Everything stays on your local network. Nothing goes over the internet.
+
+## Quick start
+
 ```bash
+git clone https://github.com/ajithonmain/Castview.git
+cd Castview
+npm install
 node server.js
 ```
-On startup, Castview prints the local network addresses to use, for example:
-```
-Castview server running
-Port: 8080
-Open one of these on your tablet/phone browser:
-  http://192.168.1.42:8080   (en0)
-```
 
-A QR code for the first address is printed in the terminal — scan it with the viewer device's camera to open the stream directly.
+Your browser opens a setup page with QR codes. Scan one with your phone or tablet camera — the mirrored screen opens in its browser. That's it.
 
-## Viewing
-Open the printed address in a browser (Chrome recommended) on your tablet, phone, or another laptop — no app install required.
+No admin/sudo needed, and dependencies are pure JavaScript — no build tools required on the machine.
 
-## Setup page (host side)
-Open `http://localhost:8080/host` on the computer being mirrored for a guided setup page: connection instructions for WiFi and USB tethering, plus scannable QR codes for every network adapter.
+## Requirements
 
-## Network Setup
-- **WiFi (same network):** connect both devices to the same WiFi, use the printed IP.
-- **USB tethering (Android → Windows):** enable USB tethering on the tablet; Windows auto-creates an RNDIS network adapter — use the IP printed for that adapter.
-- **USB tethering (Windows → Android, reverse):** some tablets support "USB reverse tethering" via apps like NetShare — optional alternative.
-- **Mac side:** works unchanged. `screenshot-desktop` will trigger a macOS Screen Recording permission prompt on first run — this is a one-time OS-level permission grant, not an install.
+- Node.js on the computer being mirrored
+- **Optional but recommended:** [ffmpeg](https://ffmpeg.org) on PATH — enables smooth streaming (~15 fps with cursor). Without it, Castview falls back to a basic screenshot loop (choppier). A portable ffmpeg build in a folder on PATH works fine; no installer needed.
 
-## Notes
-- Audio mirroring is out of scope.
-- Only the primary display is captured.
-- Remote control (mouse/keyboard passthrough) is a phase 2 feature, not implemented yet.
+## Connection options
+
+**WiFi (typical):** both devices on the same network. Scan the QR code from the setup page or terminal, or type the printed URL.
+
+**USB cable (no WiFi):** connect the device with a USB cable and enable USB tethering on it (Settings → Hotspot & tethering). A new QR code appears on the setup page automatically — no restart needed.
+
+## Configuration
+
+Environment variables, all optional:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `PORT` | `8080` | HTTP/WebSocket port |
+| `FPS` | `15` | Target frame rate |
+| `MAX_WIDTH` | `1600` | Downscale frames wider than this |
+| `JPEG_QUALITY` | `7` | ffmpeg `-q:v` (2 best – 31 worst) |
+| `NO_OPEN` | unset | Set to `1` to skip auto-opening the setup page |
+
+Example: `FPS=30 MAX_WIDTH=1280 node server.js`
+
+## Platform notes
+
+- **macOS:** first run asks for Screen Recording permission (System Settings → Privacy & Security) — a one-time OS prompt, not an install.
+- **Windows:** works without admin. For smooth mode, drop a portable `ffmpeg.exe` somewhere on PATH.
+- **Linux:** X11 capture via ffmpeg (`x11grab`).
+
+## Security note
+
+Anyone on your local network who knows the address can view the stream while the server runs. Stop the server (Ctrl+C) when you're done. Authentication is on the roadmap.
+
+## Roadmap
+
+- Viewer-side remote control (mouse/keyboard passthrough)
+- Access PIN / token auth
+- Multi-monitor selection
+- Audio (out of scope for now)
+
+## License
+
+[MIT](LICENSE)
