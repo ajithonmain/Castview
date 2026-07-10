@@ -199,6 +199,17 @@
     <div class="live"><span class="dot"></span>Sharing on local network</div>
   </header>
 
+  <div id="pin-banner" style="display:none; align-items:center; justify-content:space-between; gap:16px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 22px; margin-bottom:18px;">
+    <div style="font-size:13.5px; color:var(--muted); line-height:1.6;">
+      Scanning a QR connects instantly. Typing the address by hand? The viewer will ask for this PIN.
+    </div>
+    <div id="pin-value" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:26px; letter-spacing:6px; color:var(--accent); flex-shrink:0;"></div>
+  </div>
+
+  <div id="ffmpeg-banner" style="display:none; background:rgba(251,191,36,.08); border:1px solid rgba(251,191,36,.25); border-radius:14px; padding:14px 22px; margin-bottom:18px; font-size:13px; color:#fbbf24; line-height:1.6;">
+    Running in basic mode — install <b>ffmpeg</b> and restart for a much smoother stream (ffmpeg.org, a portable build on PATH is enough).
+  </div>
+
   <div class="section">
     <div class="section-head">
       <div class="icon">
@@ -266,6 +277,13 @@
   async function refresh() {
     try {
       const info = await (await fetch('/api/info')).json();
+
+      if (info.pin) {
+        document.getElementById('pin-value').textContent = info.pin;
+        document.getElementById('pin-banner').style.display = 'flex';
+      }
+      document.getElementById('ffmpeg-banner').style.display = info.ffmpeg ? 'none' : 'block';
+
       const key = info.interfaces.map(i => i.kind + i.address).join('|');
       if (key === lastKey) return;
       lastKey = key;

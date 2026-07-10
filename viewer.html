@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Castview</title>
 <style>
   html, body {
@@ -13,6 +16,7 @@
     height: 100%;
     background: #000;
     overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
   #screen {
     width: 100%;
@@ -47,7 +51,6 @@
     display: flex;
     align-items: center;
     gap: 7px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 12px;
     color: rgba(255, 255, 255, 0.55);
     text-shadow: 0 1px 3px rgba(0,0,0,.8);
@@ -88,17 +91,63 @@
   }
   .btn:active { background: rgba(60, 64, 70, 0.75); }
   .btn svg { display: block; }
+  .btn.on { color: #4ade80; }
   #fs-exit { display: none; }
   body.fs #fs-enter { display: none; }
   body.fs #fs-exit { display: block; }
+
+  /* PIN prompt */
+  #pin-overlay {
+    position: fixed;
+    inset: 0;
+    background: #0b0d10;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    z-index: 20;
+    color: #eceff3;
+  }
+  #pin-overlay.show { display: flex; }
+  #pin-overlay h1 { font-size: 17px; font-weight: 600; margin: 0; }
+  #pin-overlay p { font-size: 13.5px; color: #808896; margin: 0; text-align: center; line-height: 1.6; }
+  #pin-input {
+    width: 170px;
+    padding: 12px;
+    font-size: 26px;
+    letter-spacing: 12px;
+    text-align: center;
+    background: #14171c;
+    border: 1px solid #242a33;
+    border-radius: 10px;
+    color: #eceff3;
+    outline: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  #pin-input:focus { border-color: #4ade80; }
+  #pin-error { color: #f87171; font-size: 13px; min-height: 18px; }
 </style>
 </head>
 <body>
   <img id="screen" alt="Mirrored screen">
 
+  <div id="pin-overlay">
+    <h1>Enter PIN</h1>
+    <p>The 4-digit PIN is shown on the computer<br>being mirrored (terminal or setup page).</p>
+    <input id="pin-input" type="tel" inputmode="numeric" maxlength="4" autocomplete="off">
+    <div id="pin-error"></div>
+  </div>
+
   <div id="ui">
     <div id="status" class="reconnecting"><span class="dot"></span><span class="label">Connecting…</span></div>
     <div class="controls">
+      <button class="btn" id="quality" title="Toggle smooth / sharp">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 14l4-6"/>
+          <path d="M4 17a9 9 0 0 1 16 0"/>
+        </svg>
+      </button>
       <button class="btn" id="rotate" title="Rotate view">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 11A8 8 0 1 0 12 20"/>
@@ -120,15 +169,44 @@
     const img = document.getElementById('screen');
     const ui = document.getElementById('ui');
     const statusEl = document.getElementById('status');
+    const pinOverlay = document.getElementById('pin-overlay');
+    const pinInput = document.getElementById('pin-input');
+    const pinError = document.getElementById('pin-error');
+
+    // --- PIN: from URL (QR path), then saved value, else ask ---
+    const params = new URLSearchParams(location.search);
+    let pin = params.get('pin') || sessionStorage.getItem('castview-pin') || '';
+    if (params.get('pin')) {
+      sessionStorage.setItem('castview-pin', pin);
+      // Hide the PIN from the address bar / history.
+      history.replaceState(null, '', location.pathname);
+    }
+
+    function askPin(message) {
+      pinError.textContent = message || '';
+      pinOverlay.classList.add('show');
+      pinInput.value = '';
+      pinInput.focus();
+    }
+
+    pinInput.addEventListener('input', () => {
+      if (pinInput.value.length === 4) {
+        pin = pinInput.value;
+        sessionStorage.setItem('castview-pin', pin);
+        pinOverlay.classList.remove('show');
+        connect();
+      }
+    });
 
     // --- stream ---
     let currentUrl = null;
     let reconnectDelay = 500;
     const MAX_RECONNECT_DELAY = 5000;
+    let ws = null;
 
     function connect() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const ws = new WebSocket(`${proto}//${location.host}`);
+      ws = new WebSocket(`${proto}//${location.host}/?pin=${encodeURIComponent(pin)}`);
       ws.binaryType = 'blob';
 
       ws.onopen = () => {
@@ -143,7 +221,11 @@
         currentUrl = url;
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
+        if (event.code === 4001) {
+          askPin(pin ? 'Wrong PIN, try again' : '');
+          return;
+        }
         statusEl.classList.add('reconnecting');
         statusEl.querySelector('.label').textContent = 'Reconnecting…';
         setTimeout(connect, reconnectDelay);
@@ -165,6 +247,17 @@
       document.addEventListener(ev, showUi, { passive: true }));
     showUi();
 
+    // --- quality: smooth (smaller, faster) vs sharp (default) ---
+    const qualityBtn = document.getElementById('quality');
+    let smooth = false;
+    qualityBtn.addEventListener('click', () => {
+      smooth = !smooth;
+      qualityBtn.classList.toggle('on', smooth);
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'quality', value: smooth ? 'smooth' : 'sharp' }));
+      }
+    });
+
     // --- rotate: for portrait-held phones viewing a landscape screen ---
     document.getElementById('rotate').addEventListener('click', () => {
       document.body.classList.toggle('rotated');
@@ -172,13 +265,16 @@
 
     // --- fullscreen ---
     document.getElementById('fullscreen').addEventListener('click', async () => {
-      if (!document.fullscreenElement) {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
         await document.documentElement.requestFullscreen().catch(() => {});
         // Landscape is almost always what you want for a mirrored desktop.
         // Not supported everywhere (iOS Safari); ignore failures.
         try { await screen.orientation.lock('landscape'); } catch {}
-      } else {
+      } else if (document.fullscreenElement) {
         document.exitFullscreen();
+      } else {
+        // iPhone Safari has no fullscreen API; rotate is the best we can do.
+        alert('Fullscreen is not supported in this browser. Add this page to your Home Screen for a fullscreen experience.');
       }
     });
     document.addEventListener('fullscreenchange', () => {

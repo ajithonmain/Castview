@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
@@ -9,35 +10,61 @@ const QRCode = require('qrcode');
 
 const PORT = Number(process.env.PORT) || 8080;
 const FPS = Number(process.env.FPS) || 15;
-const MAX_WIDTH = Number(process.env.MAX_WIDTH) || 1600;
-const JPEG_QUALITY = Number(process.env.JPEG_QUALITY) || 7; // ffmpeg -q:v scale, 2 (best) to 31 (worst)
+const SCREEN = Number(process.env.SCREEN) || 0;
+
+// Access PIN: viewers must present it to receive the stream. QR codes embed
+// it, so scanning just works; manual typers enter it once. PIN=off disables.
+const PIN = process.env.PIN === 'off' ? null
+  : process.env.PIN || String(Math.floor(1000 + Math.random() * 9000));
+
+// Quality presets, switchable live from the viewer.
+const QUALITY_PRESETS = {
+  sharp: { maxWidth: 1600, q: 5 },
+  smooth: { maxWidth: 1100, q: 12 },
+};
+let quality = process.env.QUALITY === 'smooth' ? 'smooth' : 'sharp';
 
 const viewerHtml = fs.readFileSync(path.join(__dirname, 'viewer.html'));
 const hostHtml = fs.readFileSync(path.join(__dirname, 'host.html'));
 
+// --- HTTP ---
+
+function isLocalRequest(req) {
+  const addr = req.socket.remoteAddress || '';
+  return addr === '127.0.0.1' || addr === '::1' || addr === '::ffff:127.0.0.1';
+}
+
 const server = http.createServer((req, res) => {
-  if (req.method === 'GET' && req.url === '/') {
+  const url = new URL(req.url, 'http://x');
+  if (req.method === 'GET' && url.pathname === '/') {
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(viewerHtml);
     return;
   }
-  if (req.method === 'GET' && req.url === '/host') {
+  if (req.method === 'GET' && url.pathname === '/host') {
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(hostHtml);
     return;
   }
-  if (req.method === 'GET' && req.url === '/api/info') {
+  if (req.method === 'GET' && url.pathname === '/api/info') {
     Promise.all(
       getLocalIps().map(async ({ name, address }) => {
-        const url = `http://${address}:${PORT}`;
-        const qrSvg = await QRCode.toString(url, { type: 'svg', margin: 1 });
+        const viewUrl = `http://${address}:${PORT}${PIN ? `/?pin=${PIN}` : ''}`;
+        const qrSvg = await QRCode.toString(viewUrl, { type: 'svg', margin: 1 });
         const { kind, label } = classifyInterface(name);
-        return { name, address, url, qrSvg, kind, label };
+        return { name, address, url: viewUrl, qrSvg, kind, label };
       })
     )
       .then((interfaces) => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ port: PORT, interfaces }));
+        res.end(JSON.stringify({
+          port: PORT,
+          interfaces,
+          ffmpeg: useFfmpeg,
+          viewers: wss.clients.size,
+          // Only reveal the PIN to the machine being mirrored.
+          pin: isLocalRequest(req) ? PIN : undefined,
+        }));
       })
       .catch((err) => {
         res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -49,17 +76,59 @@ const server = http.createServer((req, res) => {
   res.end('Not found');
 });
 
+// --- WebSocket + auth ---
+
 const wss = new WebSocket.Server({ server });
+
+function authedClients() {
+  return [...wss.clients].filter((c) => c.authed);
+}
 
 function broadcast(frame) {
   for (const client of wss.clients) {
     // Skip clients that haven't drained the previous frame yet, so a slow
     // viewer lags instead of building up a growing backlog of stale frames.
-    if (client.readyState === WebSocket.OPEN && client.bufferedAmount === 0) {
+    if (client.authed && client.readyState === WebSocket.OPEN && client.bufferedAmount === 0) {
       client.send(frame, { binary: true });
     }
   }
 }
+
+wss.on('connection', (ws, req) => {
+  const url = new URL(req.url, 'http://x');
+  ws.authed = !PIN || url.searchParams.get('pin') === PIN;
+  if (!ws.authed) {
+    ws.close(4001, 'invalid pin');
+    return;
+  }
+
+  console.log('Viewer connected');
+  startCapture();
+
+  ws.on('message', (data, isBinary) => {
+    if (isBinary) return;
+    try {
+      const msg = JSON.parse(data.toString());
+      if (msg.type === 'quality' && QUALITY_PRESETS[msg.value] && msg.value !== quality) {
+        quality = msg.value;
+        console.log(`Quality changed to ${quality}`);
+        if (useFfmpeg) {
+          stopFfmpeg();
+          startFfmpeg();
+        }
+      }
+    } catch {}
+  });
+
+  ws.on('close', () => {
+    console.log('Viewer disconnected');
+    if (authedClients().length === 0) stopCapture();
+  });
+
+  ws.on('error', (err) => {
+    console.error('WebSocket error:', err.message);
+  });
+});
 
 // --- ffmpeg capture (preferred): continuous MJPEG stream, smooth frame rate ---
 
@@ -74,7 +143,7 @@ function hasFfmpeg() {
 
 function ffmpegInputArgs() {
   if (process.platform === 'darwin') {
-    return ['-f', 'avfoundation', '-capture_cursor', '1', '-pixel_format', 'uyvy422', '-framerate', String(FPS), '-i', 'Capture screen 0'];
+    return ['-f', 'avfoundation', '-capture_cursor', '1', '-pixel_format', 'uyvy422', '-framerate', String(FPS), '-i', `Capture screen ${SCREEN}`];
   }
   if (process.platform === 'win32') {
     return ['-f', 'gdigrab', '-framerate', String(FPS), '-draw_mouse', '1', '-i', 'desktop'];
@@ -87,14 +156,15 @@ let ffmpegRestartTimer = null;
 
 function startFfmpeg() {
   if (ffmpegProc) return;
+  const { maxWidth, q } = QUALITY_PRESETS[quality];
   const args = [
     '-loglevel', 'error',
     ...ffmpegInputArgs(),
-    '-vf', `scale='min(${MAX_WIDTH},iw)':-2`,
+    '-vf', `scale='min(${maxWidth},iw)':-2`,
     // avfoundation's screen device reports a bogus huge timebase; without an
     // explicit output rate ffmpeg duplicates frames as fast as CPU allows.
     '-r', String(FPS),
-    '-q:v', String(JPEG_QUALITY),
+    '-q:v', String(q),
     '-f', 'mjpeg',
     'pipe:1',
   ];
@@ -120,11 +190,11 @@ function startFfmpeg() {
   ffmpegProc.on('exit', (code, signal) => {
     ffmpegProc = null;
     // Only restart on unexpected death, not when we killed it ourselves.
-    if (signal !== 'SIGTERM' && wss.clients.size > 0) {
+    if (signal !== 'SIGTERM' && authedClients().length > 0) {
       console.error(`ffmpeg exited (code ${code}), restarting in 1s`);
       ffmpegRestartTimer = setTimeout(() => {
         ffmpegRestartTimer = null;
-        if (wss.clients.size > 0) startCapture();
+        if (authedClients().length > 0) startCapture();
       }, 1000);
     }
   });
@@ -155,7 +225,7 @@ function captureFrame() {
       });
     });
   }
-  return screenshot({ format: 'jpg' });
+  return screenshot({ format: 'jpg', screen: SCREEN || undefined });
 }
 
 let captureTimer = null;
@@ -202,37 +272,7 @@ function stopCapture() {
   stopScreenshotLoop();
 }
 
-wss.on('connection', (ws) => {
-  console.log('Viewer connected');
-  startCapture();
-
-  ws.on('close', () => {
-    console.log('Viewer disconnected');
-    if (wss.clients.size === 0) stopCapture();
-  });
-
-  ws.on('error', (err) => {
-    console.error('WebSocket error:', err.message);
-  });
-});
-
-// Open the host setup page in the default browser (best effort; NO_OPEN=1 disables).
-function openHostPage(url) {
-  if (process.env.NO_OPEN) return;
-  const cmd = process.platform === 'darwin' ? 'open'
-    : process.platform === 'win32' ? 'cmd'
-    : 'xdg-open';
-  const args = process.platform === 'win32' ? ['/c', 'start', '', url] : [url];
-  execFile(cmd, args, () => {});
-}
-
-// Kill the ffmpeg child when the server dies, so it isn't orphaned.
-for (const sig of ['SIGINT', 'SIGTERM']) {
-  process.on(sig, () => {
-    stopCapture();
-    process.exit(0);
-  });
-}
+// --- network interfaces ---
 
 // Classify each network interface as wifi / usb / ethernet so the setup page
 // can tell the user which QR belongs to which connection path.
@@ -289,9 +329,30 @@ function getLocalIps() {
   return ips;
 }
 
+// --- startup ---
+
+// Open the host setup page in the default browser (best effort; NO_OPEN=1 disables).
+function openHostPage(url) {
+  if (process.env.NO_OPEN) return;
+  const cmd = process.platform === 'darwin' ? 'open'
+    : process.platform === 'win32' ? 'cmd'
+    : 'xdg-open';
+  const args = process.platform === 'win32' ? ['/c', 'start', '', url] : [url];
+  execFile(cmd, args, () => {});
+}
+
+// Kill the ffmpeg child when the server dies, so it isn't orphaned.
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    stopCapture();
+    process.exit(0);
+  });
+}
+
 server.listen(PORT, async () => {
   console.log('Castview server running');
   console.log(`Port: ${PORT}`);
+  if (PIN) console.log(`Access PIN: ${PIN} (QR codes include it; set PIN=off to disable)`);
   const ips = getLocalIps();
   if (ips.length === 0) {
     console.log('No non-internal IPv4 interfaces found. Check your network connection.');
@@ -302,7 +363,7 @@ server.listen(PORT, async () => {
     console.log(`  http://${address}:${PORT}   (${name})`);
   }
   console.log(`Setup page with QR codes (open on this computer): http://localhost:${PORT}/host`);
-  const url = `http://${ips[0].address}:${PORT}`;
+  const url = `http://${ips[0].address}:${PORT}${PIN ? `/?pin=${PIN}` : ''}`;
   console.log(`\nScan to view (${url}):`);
   console.log(await QRCode.toString(url, { type: 'terminal', small: true }));
   openHostPage(`http://localhost:${PORT}/host`);

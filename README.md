@@ -19,13 +19,19 @@ Everything stays on your local network. Nothing goes over the internet.
 ## Quick start
 
 ```bash
+npx castview
+```
+
+Or from source:
+
+```bash
 git clone https://github.com/ajithonmain/Castview.git
 cd Castview
 npm install
 node server.js
 ```
 
-Your browser opens a setup page with QR codes. Scan one with your phone or tablet camera — the mirrored screen opens in its browser. That's it.
+Your browser opens a setup page with QR codes. Scan one with your phone or tablet camera — the mirrored screen opens in its browser, already authenticated. That's it.
 
 No admin/sudo needed, and dependencies are pure JavaScript — no build tools required on the machine.
 
@@ -48,11 +54,14 @@ Environment variables, all optional:
 |---|---|---|
 | `PORT` | `8080` | HTTP/WebSocket port |
 | `FPS` | `15` | Target frame rate |
-| `MAX_WIDTH` | `1600` | Downscale frames wider than this |
-| `JPEG_QUALITY` | `7` | ffmpeg `-q:v` (2 best – 31 worst) |
+| `PIN` | random | Access PIN; set a fixed one, or `PIN=off` to disable |
+| `QUALITY` | `sharp` | `sharp` or `smooth` (smaller frames for weak WiFi) |
+| `SCREEN` | `0` | Display index to capture (macOS) |
 | `NO_OPEN` | unset | Set to `1` to skip auto-opening the setup page |
 
-Example: `FPS=30 MAX_WIDTH=1280 node server.js`
+Example: `FPS=30 PIN=1234 npx castview`
+
+Viewers can also toggle sharp/smooth live from a button in the viewer.
 
 ## Platform notes
 
@@ -62,13 +71,12 @@ Example: `FPS=30 MAX_WIDTH=1280 node server.js`
 
 ## Security note
 
-Anyone on your local network who knows the address can view the stream while the server runs. Stop the server (Ctrl+C) when you're done. Authentication is on the roadmap.
+Every session is protected by a random 4-digit PIN. QR codes embed it, so scanning connects directly; anyone typing the address by hand is asked for it. The PIN is only shown on the machine being mirrored. Stop the server (Ctrl+C) when you're done. Note this is LAN-convenience security, not cryptographic — the stream itself is unencrypted HTTP on your local network.
 
 ## Roadmap
 
 - Viewer-side remote control (mouse/keyboard passthrough)
-- Access PIN / token auth
-- Multi-monitor selection
+- Multi-monitor picker in the setup page
 - Audio (out of scope for now)
 
 ## License

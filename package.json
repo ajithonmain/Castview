@@ -1,10 +1,42 @@
 {
   "name": "castview",
-  "version": "1.0.0",
-  "description": "Mirror a laptop screen to any browser on the same network",
+  "version": "0.1.0",
+  "description": "Mirror your screen to any device with a browser over LAN. Zero install on the viewer, QR code to connect, works over WiFi or a USB cable.",
   "main": "server.js",
+  "bin": {
+    "castview": "./server.js"
+  },
+  "files": [
+    "server.js",
+    "viewer.html",
+    "host.html"
+  ],
   "scripts": {
     "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "screen-mirror",
+    "screen-share",
+    "screen-cast",
+    "mirror",
+    "remote-display",
+    "lan",
+    "websocket",
+    "mjpeg",
+    "second-screen"
+  ],
+  "author": "Ajith M Jose",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ajithonmain/Castview.git"
+  },
+  "homepage": "https://github.com/ajithonmain/Castview#readme",
+  "bugs": {
+    "url": "https://github.com/ajithonmain/Castview/issues"
   },
   "dependencies": {
     "qrcode": "^1.5.4",
