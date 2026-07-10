@@ -79,6 +79,23 @@
     transition: background .15s;
   }
   .stop-btn:hover { background: rgba(248, 113, 113, 0.15); }
+  .shortcut-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .shortcut-btn:hover { border-color: var(--accent-border); background: var(--card2); }
+  .shortcut-btn.done { color: var(--accent); border-color: var(--accent-border); cursor: default; }
 
   /* ---------- headline ---------- */
   .headline { margin-bottom: 28px; }
@@ -306,6 +323,13 @@
     </div>
     <div class="header-right">
       <div class="live"><span class="dot"></span>Live</div>
+      <button class="shortcut-btn" id="shortcut" title="Put a Castview launcher on your Desktop so you can start sharing with a double-click">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v12M12 15l-4-4M12 15l4-4"/>
+          <path d="M4 19h16"/>
+        </svg>
+        <span id="shortcut-lbl">Desktop shortcut</span>
+      </button>
       <button class="stop-btn" id="stop">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
           <rect x="5" y="5" width="14" height="14" rx="2"/>
@@ -447,6 +471,20 @@
       // server briefly unreachable; keep last known state and retry
     }
   }
+
+  const shortcutBtn = document.getElementById('shortcut');
+  shortcutBtn.addEventListener('click', async () => {
+    if (shortcutBtn.classList.contains('done')) return;
+    try {
+      const r = await fetch('/api/shortcut', { method: 'POST' });
+      if (!(await r.json()).ok) throw new Error();
+      shortcutBtn.classList.add('done');
+      document.getElementById('shortcut-lbl').textContent = 'Added to Desktop';
+    } catch {
+      document.getElementById('shortcut-lbl').textContent = 'Could not add';
+      setTimeout(() => { document.getElementById('shortcut-lbl').textContent = 'Desktop shortcut'; }, 2500);
+    }
+  });
 
   document.getElementById('stop').addEventListener('click', async () => {
     if (!confirm('Stop sharing your screen?')) return;

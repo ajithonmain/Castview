@@ -74,6 +74,23 @@ const server = http.createServer((req, res) => {
       });
     return;
   }
+  // Create a double-clickable launcher on the Desktop for easy relaunching.
+  if (req.method === 'POST' && url.pathname === '/api/shortcut') {
+    if (!isLocalRequest(req)) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'forbidden' }));
+      return;
+    }
+    try {
+      const file = createDesktopShortcut();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, path: file }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
   // Stop sharing from the setup page. Only the mirrored machine may call it.
   if (req.method === 'POST' && url.pathname === '/api/stop') {
     if (!isLocalRequest(req)) {
@@ -356,6 +373,41 @@ function getLocalIps() {
 }
 
 // --- startup ---
+
+// The command a desktop shortcut should run: when running from the npx cache
+// (which may be pruned) fall back to npx, otherwise pin the local install.
+function relaunchCommand() {
+  if (__dirname.includes('_npx')) return 'npx -y castview';
+  return `"${process.execPath}" "${path.join(__dirname, 'server.js')}"`;
+}
+
+function createDesktopShortcut() {
+  const desktop = path.join(os.homedir(), 'Desktop');
+  if (!fs.existsSync(desktop)) throw new Error('Desktop folder not found');
+  const cmd = relaunchCommand();
+
+  if (process.platform === 'darwin') {
+    const file = path.join(desktop, 'Castview.command');
+    fs.writeFileSync(file, `#!/bin/zsh\n${cmd}\n`, { mode: 0o755 });
+    return file;
+  }
+  if (process.platform === 'win32') {
+    const file = path.join(desktop, 'Castview.cmd');
+    fs.writeFileSync(file, `@echo off\r\ntitle Castview\r\n${cmd}\r\npause\r\n`);
+    return file;
+  }
+  const file = path.join(desktop, 'castview.desktop');
+  fs.writeFileSync(file, [
+    '[Desktop Entry]',
+    'Type=Application',
+    'Name=Castview',
+    'Comment=Share this screen to any browser',
+    `Exec=${cmd}`,
+    'Terminal=true',
+    '',
+  ].join('\n'), { mode: 0o755 });
+  return file;
+}
 
 // Open the host setup page in the default browser (best effort; NO_OPEN=1 disables).
 function openHostPage(url) {
