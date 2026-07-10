@@ -28,6 +28,7 @@ let quality = process.env.QUALITY === 'smooth' ? 'smooth' : 'sharp';
 
 const viewerHtml = fs.readFileSync(path.join(__dirname, 'viewer.html'));
 const hostHtml = fs.readFileSync(path.join(__dirname, 'host.html'));
+const logoPng = fs.readFileSync(path.join(__dirname, 'assets', 'logo.png'));
 
 // --- HTTP ---
 
@@ -46,6 +47,11 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && url.pathname === '/host') {
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(hostHtml);
+    return;
+  }
+  if (req.method === 'GET' && url.pathname === '/logo.png') {
+    res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'max-age=86400' });
+    res.end(logoPng);
     return;
   }
   if (req.method === 'GET' && url.pathname === '/api/info') {
@@ -381,21 +387,59 @@ function relaunchCommand() {
   return `"${process.execPath}" "${path.join(__dirname, 'server.js')}"`;
 }
 
+// Creates a proper launcher with the Castview icon that starts the server in
+// the background — no terminal window. Stopping is done from the setup page.
 function createDesktopShortcut() {
   const desktop = path.join(os.homedir(), 'Desktop');
   if (!fs.existsSync(desktop)) throw new Error('Desktop folder not found');
   const cmd = relaunchCommand();
 
   if (process.platform === 'darwin') {
-    const file = path.join(desktop, 'Castview.command');
-    fs.writeFileSync(file, `#!/bin/zsh\n${cmd}\n`, { mode: 0o755 });
-    return file;
+    // A minimal .app bundle: gets a real icon and launches without Terminal.
+    const app = path.join(desktop, 'Castview.app');
+    fs.mkdirSync(path.join(app, 'Contents', 'MacOS'), { recursive: true });
+    fs.mkdirSync(path.join(app, 'Contents', 'Resources'), { recursive: true });
+    fs.writeFileSync(path.join(app, 'Contents', 'Info.plist'), `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>Castview</string>
+  <key>CFBundleIdentifier</key><string>com.castview.launcher</string>
+  <key>CFBundleExecutable</key><string>launcher</string>
+  <key>CFBundleIconFile</key><string>castview</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>LSUIElement</key><true/>
+</dict>
+</plist>
+`);
+    // GUI apps get a minimal PATH; add the common node locations for npx.
+    fs.writeFileSync(path.join(app, 'Contents', 'MacOS', 'launcher'), `#!/bin/zsh
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+${cmd} &>/dev/null &
+`, { mode: 0o755 });
+    fs.copyFileSync(path.join(__dirname, 'assets', 'castview.icns'),
+      path.join(app, 'Contents', 'Resources', 'castview.icns'));
+    return app;
   }
+
   if (process.platform === 'win32') {
-    const file = path.join(desktop, 'Castview.cmd');
-    fs.writeFileSync(file, `@echo off\r\ntitle Castview\r\n${cmd}\r\npause\r\n`);
-    return file;
+    // A .lnk with the Castview icon, launching node hidden via PowerShell.
+    const lnk = path.join(desktop, 'Castview.lnk');
+    const ico = path.join(__dirname, 'assets', 'castview.ico');
+    const psTarget = cmd.replace(/'/g, "''");
+    const script = [
+      "$ws = New-Object -ComObject WScript.Shell;",
+      `$s = $ws.CreateShortcut('${lnk.replace(/'/g, "''")}');`,
+      "$s.TargetPath = 'powershell.exe';",
+      `$s.Arguments = '-WindowStyle Hidden -Command "${psTarget}"';`,
+      `$s.IconLocation = '${ico.replace(/'/g, "''")}';`,
+      "$s.Description = 'Share this screen to any browser';",
+      "$s.Save()",
+    ].join(' ');
+    execFileSync('powershell.exe', ['-NoProfile', '-Command', script], { stdio: 'ignore' });
+    return lnk;
   }
+
   const file = path.join(desktop, 'castview.desktop');
   fs.writeFileSync(file, [
     '[Desktop Entry]',
@@ -403,7 +447,8 @@ function createDesktopShortcut() {
     'Name=Castview',
     'Comment=Share this screen to any browser',
     `Exec=${cmd}`,
-    'Terminal=true',
+    `Icon=${path.join(__dirname, 'assets', 'castview.png')}`,
+    'Terminal=false',
     '',
   ].join('\n'), { mode: 0o755 });
   return file;
@@ -426,6 +471,20 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
     process.exit(0);
   });
 }
+
+// Launched again while already running (e.g. desktop shortcut double-click):
+// don't crash silently, just show the existing session's setup page.
+// The ws library re-emits http server errors on wss, so handle it there too.
+function onListenError(err) {
+  if (err.code === 'EADDRINUSE') {
+    console.log(`Castview is already running on port ${PORT} — opening its setup page.`);
+    openHostPage(`http://localhost:${PORT}/host`);
+    process.exit(0);
+  }
+  throw err;
+}
+server.on('error', onListenError);
+wss.on('error', () => {});
 
 server.listen(PORT, async () => {
   console.log('Castview server running');

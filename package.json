@@ -9,7 +9,11 @@
   "files": [
     "server.js",
     "viewer.html",
-    "host.html"
+    "host.html",
+    "assets/castview.icns",
+    "assets/castview.ico",
+    "assets/castview.png",
+    "assets/logo.png"
   ],
   "scripts": {
     "start": "node server.js"
