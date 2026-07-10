@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { execFile } = require('child_process');
 const WebSocket = require('ws');
 const screenshot = require('screenshot-desktop');
 
@@ -36,6 +37,22 @@ function stopCaptureLoop() {
   captureTimer = null;
 }
 
+// On macOS, call screencapture directly: skips screenshot-desktop's
+// per-frame system_profiler call (slow) and adds -C to include the cursor.
+const darwinFramePath = path.join(os.tmpdir(), `castview-frame-${process.pid}.jpg`);
+
+function captureFrame() {
+  if (process.platform === 'darwin') {
+    return new Promise((resolve, reject) => {
+      execFile('screencapture', ['-x', '-C', '-t', 'jpg', darwinFramePath], (err) => {
+        if (err) return reject(err);
+        fs.readFile(darwinFramePath, (err, buf) => (err ? reject(err) : resolve(buf)));
+      });
+    });
+  }
+  return screenshot({ format: 'jpg' });
+}
+
 async function captureAndBroadcast() {
   if (wss.clients.size === 0) {
     stopCaptureLoop();
@@ -44,7 +61,7 @@ async function captureAndBroadcast() {
   if (capturing) return;
   capturing = true;
   try {
-    const img = await screenshot({ format: 'jpg' });
+    const img = await captureFrame();
     for (const client of wss.clients) {
       if (client.readyState === WebSocket.OPEN) {
         client.send(img, { binary: true });
