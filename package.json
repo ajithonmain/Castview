@@ -4,7 +4,7 @@
   "description": "Mirror your screen to any device with a browser over LAN. Zero install on the viewer, QR code to connect, works over WiFi or a USB cable.",
   "main": "server.js",
   "bin": {
-    "castview": "./server.js"
+    "castview": "server.js"
   },
   "files": [
     "server.js",
