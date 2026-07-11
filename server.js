@@ -8,7 +8,7 @@ const WebSocket = require('ws');
 const screenshot = require('screenshot-desktop');
 const QRCode = require('qrcode');
 
-const PORT = Number(process.env.PORT) || 8080;
+let PORT = Number(process.env.PORT) || 8080;
 const FPS = Number(process.env.FPS) || 15;
 const SCREEN = Number(process.env.SCREEN) || 0;
 
@@ -87,6 +87,7 @@ const server = http.createServer((req, res) => {
       .then((interfaces) => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
+          app: 'castview',
           port: PORT,
           interfaces,
           pending: getPendingUsb(),
@@ -609,16 +610,51 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
   });
 }
 
-// Launched again while already running (e.g. desktop shortcut double-click):
-// don't crash silently, just show the existing session's setup page.
+// Ask whoever holds the port to identify itself: a Castview instance
+// answers /api/info with app: "castview" (older versions at least return
+// an interfaces array there).
+function probeCastview(port) {
+  return new Promise((resolve) => {
+    const req = http.get({ host: '127.0.0.1', port, path: '/api/info', timeout: 2000 }, (res) => {
+      let body = '';
+      res.on('data', (d) => { body += d; });
+      res.on('end', () => {
+        try {
+          const info = JSON.parse(body);
+          resolve(info.app === 'castview' || Array.isArray(info.interfaces));
+        } catch {
+          resolve(false);
+        }
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('timeout')));
+    req.on('error', () => resolve(false));
+  });
+}
+
+// Port already taken. If the occupant is another Castview (e.g. the desktop
+// shortcut was double-clicked while a session is running), just show that
+// session's setup page. Any other app: move to the next port and retry.
 // The ws library re-emits http server errors on wss, so handle it there too.
+const MAX_PORT_TRIES = 10;
+let portTries = 0;
 function onListenError(err) {
-  if (err.code === 'EADDRINUSE') {
-    console.log(`Castview is already running on port ${PORT} — opening its setup page.`);
-    openHostPage(`http://localhost:${PORT}/host`);
-    process.exit(0);
-  }
-  throw err;
+  if (err.code !== 'EADDRINUSE') throw err;
+  probeCastview(PORT).then((isCastview) => {
+    if (isCastview) {
+      console.log(`Castview is already running on port ${PORT} — opening its setup page.`);
+      openHostPage(`http://localhost:${PORT}/host`);
+      process.exit(0);
+    }
+    portTries += 1;
+    if (portTries >= MAX_PORT_TRIES) {
+      console.error(`Ports ${PORT - portTries + 1}-${PORT} are all in use by other apps. Free one up or set PORT to something else.`);
+      process.exit(1);
+    }
+    console.log(`Port ${PORT} is in use by another app — trying ${PORT + 1}.`);
+    PORT += 1;
+    server.listen(PORT);
+  });
 }
 server.on('error', onListenError);
 wss.on('error', () => {});

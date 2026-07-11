@@ -77,7 +77,7 @@ All optional, via environment variables:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `PORT` | `8080` | HTTP/WebSocket port |
+| `PORT` | `8080` | HTTP/WebSocket port. If another app holds it, the next free port is used automatically; if another Castview holds it, its setup page opens instead |
 | `FPS` | `15` | Target frame rate |
 | `PIN` | random | Fixed access PIN, or `PIN=off` to disable |
 | `QUALITY` | `sharp` | Starting quality: `sharp` (HD) or `smooth` (Fast) |
