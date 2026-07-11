@@ -13,7 +13,8 @@
     --border: #232830;
     --text: #f0f2f5;
     --muted: #838c9b;
-    --accent: #e11ea6;
+    --accent: #f453c1;
+    --ok: #4ade80;
     --accent-soft: rgba(225, 30, 166, 0.09);
     --accent-border: rgba(225, 30, 166, 0.25);
     --danger: #f87171;
@@ -56,13 +57,13 @@
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    color: var(--accent);
+    color: var(--ok);
     font-weight: 500;
   }
   .live .dot {
     width: 8px; height: 8px; border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent);
+    background: var(--ok);
+    box-shadow: 0 0 8px var(--ok);
   }
   .stop-btn {
     display: inline-flex;
@@ -224,14 +225,14 @@
     gap: 8px;
     padding: 6px 14px;
     border-radius: 999px;
-    background: var(--accent-soft);
-    border: 1px solid var(--accent-border);
-    color: var(--accent);
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    color: var(--ok);
     font-size: 13px;
     font-weight: 600;
     margin-bottom: 18px;
   }
-  .device-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .device-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
 
   .steps { display: flex; flex-direction: column; gap: 14px; }
   .step { display: flex; gap: 13px; align-items: flex-start; }
