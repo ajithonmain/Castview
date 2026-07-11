@@ -3,6 +3,8 @@
 [![npm version](https://img.shields.io/npm/v/castview)](https://www.npmjs.com/package/castview)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
+**Website: [cstview.vercel.app](https://cstview.vercel.app)**
+
 Mirror a computer's screen to any device with a browser — phone, tablet, or another computer. One command on the host, one QR scan on the viewer. Nothing to install on the viewing device, no admin rights, no accounts, no cloud.
 
 Castview was built as a rescue tool for a laptop with a dead display: if the machine has Node.js and you have a USB cable, you have a screen again. It works just as well for everyday sharing — showing your screen to a tablet on your desk, a TV browser, or a colleague's laptop on the same network.
