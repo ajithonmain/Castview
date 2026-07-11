@@ -20,14 +20,21 @@
     overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
-  #screen {
+  #screen, #video {
     width: 100%;
     height: 100%;
     object-fit: contain;
     display: block;
+    background: #000;
   }
+  /* WebRTC low-latency mode swaps the JPEG <img> for a live <video> */
+  #video { display: none; }
+  body.webrtc #video { display: block; }
+  body.webrtc #screen { display: none; }
+  body.webrtc #quality { display: none; }
   /* Rotated mode: for viewing a landscape screen on a portrait-held phone */
-  body.rotated #screen {
+  body.rotated #screen,
+  body.rotated #video {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -155,10 +162,40 @@
   }
   #pin-input:focus { border-color: #f453c1; }
   #pin-error { color: #f87171; font-size: 13px; min-height: 18px; }
+
+  /* Loader: shown until the first frame arrives */
+  #loader {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 15;
+    color: #808896;
+    font-size: 13px;
+  }
+  #loader.hide { display: none; }
+  #loader .ring {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.12);
+    border-top-color: #f453c1;
+    animation: spin .9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
   <img id="screen" alt="Mirrored screen">
+  <video id="video" autoplay muted playsinline></video>
+
+  <div id="loader">
+    <div class="ring"></div>
+    <div>Waiting for the screen…</div>
+  </div>
 
   <div id="pin-overlay">
     <img src="/logo.png" alt="" width="56" height="56" style="border-radius:14px;">
@@ -237,10 +274,30 @@
     });
 
     // --- stream ---
+    const loader = document.getElementById('loader');
     let currentUrl = null;
     let reconnectDelay = 500;
     const MAX_RECONNECT_DELAY = 5000;
     let ws = null;
+    let pendingFrame = null;
+    let rendering = false;
+
+    async function renderFrames() {
+      rendering = true;
+      while (pendingFrame) {
+        const blob = pendingFrame;
+        pendingFrame = null;
+        const url = URL.createObjectURL(blob);
+        img.src = url;
+        // Wait for the JPEG to finish decoding before accepting the next
+        // frame, so the image never paints half-swapped.
+        try { await img.decode(); } catch {}
+        if (currentUrl) URL.revokeObjectURL(currentUrl);
+        currentUrl = url;
+        loader.classList.add('hide');
+      }
+      rendering = false;
+    }
 
     function connect() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -253,10 +310,15 @@
       };
 
       ws.onmessage = (event) => {
-        const url = URL.createObjectURL(event.data);
-        img.src = url;
-        if (currentUrl) URL.revokeObjectURL(currentUrl);
-        currentUrl = url;
+        // Text frames are WebRTC signaling; binary frames are JPEG stream.
+        if (typeof event.data === 'string') {
+          handleSignal(JSON.parse(event.data));
+          return;
+        }
+        // Keep only the newest frame: if decoding falls behind the network,
+        // stale frames are dropped instead of queueing up (which reads as lag).
+        pendingFrame = event.data;
+        if (!rendering) renderFrames();
       };
 
       ws.onclose = (event) => {
@@ -273,6 +335,56 @@
       ws.onerror = () => ws.close();
     }
     connect();
+
+    // --- WebRTC low latency path ---
+    // When the host machine's setup tab is broadcasting, we receive the video
+    // peer-to-peer and mute the JPEG stream. If the peer connection ever
+    // drops (host tab closed, network hiccup), we fall back to JPEG frames.
+    const video = document.getElementById('video');
+    let pc = null;
+
+    function sendSignal(obj) {
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+    }
+
+    function webrtcOff() {
+      if (pc) { pc.onconnectionstatechange = null; pc.close(); pc = null; }
+      video.srcObject = null;
+      document.body.classList.remove('webrtc');
+      sendSignal({ type: 'mode', value: 'jpeg' });
+    }
+
+    async function handleSignal(msg) {
+      if (msg.type === 'webrtc-available') {
+        if (typeof RTCPeerConnection === 'undefined') return; // stay on JPEG
+        sendSignal({ type: 'webrtc-request' });
+      } else if (msg.type === 'webrtc-gone') {
+        webrtcOff();
+      } else if (msg.type === 'webrtc-offer') {
+        if (pc) pc.close();
+        pc = new RTCPeerConnection();
+        pc.ontrack = (e) => { video.srcObject = e.streams[0]; };
+        pc.onicecandidate = (e) => {
+          if (e.candidate) sendSignal({ type: 'webrtc-ice', candidate: e.candidate });
+        };
+        pc.onconnectionstatechange = () => {
+          if (!pc) return;
+          if (pc.connectionState === 'connected') {
+            document.body.classList.add('webrtc');
+            loader.classList.add('hide');
+            sendSignal({ type: 'mode', value: 'webrtc' });
+          } else if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
+            webrtcOff();
+          }
+        };
+        await pc.setRemoteDescription(msg.sdp);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        sendSignal({ type: 'webrtc-answer', sdp: pc.localDescription });
+      } else if (msg.type === 'webrtc-ice' && pc) {
+        await pc.addIceCandidate(msg.candidate).catch(() => {});
+      }
+    }
 
     // --- collapsible control pill: closed by default, auto-closes when idle ---
     const controls = document.getElementById('controls');

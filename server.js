@@ -12,16 +12,19 @@ const PORT = Number(process.env.PORT) || 8080;
 const FPS = Number(process.env.FPS) || 15;
 const SCREEN = Number(process.env.SCREEN) || 0;
 
-// Access PIN: viewers must present it to receive the stream. QR codes embed
-// it, so scanning just works; manual typers enter it once. Disable with
-// --no-pin or PIN=off — essential when the host screen is dead and the PIN
-// can't be read.
+// Access PIN: viewers must present it to receive the stream. The QR codes
+// and printed URLs deliberately do not embed it; every viewer types it once
+// in the browser. Disable with --no-pin or PIN=off, which is essential when
+// the host screen is dead and the PIN can't be read.
 const PIN = process.argv.includes('--no-pin') || process.env.PIN === 'off' ? null
   : process.env.PIN || String(Math.floor(1000 + Math.random() * 9000));
 
 // Quality presets, switchable live from the viewer.
+// sharp was 1920/q4, but at 15fps that is 30+ Mbps of JPEG: more than most
+// WiFi links sustain, so frames got skipped and motion turned jerky. 1600/q7
+// halves the bitrate with little visible loss on a tablet-sized screen.
 const QUALITY_PRESETS = {
-  sharp: { maxWidth: 1920, q: 4 },
+  sharp: { maxWidth: 1600, q: 7 },
   smooth: { maxWidth: 1100, q: 12 },
 };
 let quality = process.env.QUALITY === 'smooth' ? 'smooth' : 'sharp';
@@ -55,19 +58,38 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (req.method === 'GET' && url.pathname === '/api/info') {
-    Promise.all(
-      getLocalIps().map(async ({ name, address }) => {
-        const viewUrl = `http://${address}:${PORT}${PIN ? `/?pin=${PIN}` : ''}`;
-        const qrSvg = await QRCode.toString(viewUrl, { type: 'svg', margin: 1 });
-        const { kind, label } = classifyInterface(name);
-        return { name, address, url: viewUrl, qrSvg, kind, label };
-      })
-    )
+    // Manual "Scan now" from the setup page: drop the cached hardware-port
+    // map so a phone plugged in moments ago is classified from fresh data.
+    // On macOS also ask the OS to re-detect network hardware — a tethered
+    // phone can sit on the USB bus without macOS ever creating its network
+    // service, and this (non-admin) command is what makes it appear.
+    let detect = Promise.resolve();
+    if (url.searchParams.get('fresh')) {
+      darwinPortCache = { at: 0, map: {} };
+      if (process.platform === 'darwin' && isLocalRequest(req)) {
+        detect = new Promise((resolve) => {
+          execFile('networksetup', ['-detectnewhardware'], { timeout: 15000 }, () => {
+            // Give DHCP a moment so the fresh interface answers with an IP.
+            setTimeout(resolve, 2000);
+          });
+        });
+      }
+    }
+    detect
+      .then(() => Promise.all(
+        getLocalIps().map(async ({ name, address }) => {
+          const viewUrl = `http://${address}:${PORT}`;
+          const qrSvg = await QRCode.toString(viewUrl, { type: 'svg', margin: 1 });
+          const { kind, label } = classifyInterface(name);
+          return { name, address, url: viewUrl, qrSvg, kind, label };
+        })
+      ))
       .then((interfaces) => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           port: PORT,
           interfaces,
+          pending: getPendingUsb(),
           ffmpeg: useFfmpeg,
           viewers: wss.clients.size,
           // Only reveal the PIN to the machine being mirrored.
@@ -121,30 +143,86 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocket.Server({ server });
 
+// The low-latency path: the host machine's own /host tab captures the screen
+// with getDisplayMedia and streams WebRTC to viewers. This server only relays
+// the signaling messages between that tab (hostTab) and each viewer; media
+// flows peer-to-peer over the LAN. Viewers without a live hostTab fall back
+// to the JPEG-over-WebSocket stream below.
+let hostTab = null;
+let nextViewerId = 1;
+
 function authedClients() {
-  return [...wss.clients].filter((c) => c.authed);
+  return [...wss.clients].filter((c) => c.authed && !c.isHost);
+}
+
+function jpegClients() {
+  return authedClients().filter((c) => c.mode !== 'webrtc');
 }
 
 function broadcast(frame) {
-  for (const client of wss.clients) {
+  for (const client of jpegClients()) {
     // Skip clients that haven't drained the previous frame yet, so a slow
     // viewer lags instead of building up a growing backlog of stale frames.
-    if (client.authed && client.readyState === WebSocket.OPEN && client.bufferedAmount === 0) {
+    if (client.readyState === WebSocket.OPEN && client.bufferedAmount === 0) {
       client.send(frame, { binary: true });
     }
   }
 }
 
+function sendJson(ws, obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
+
 wss.on('connection', (ws, req) => {
   const url = new URL(req.url, 'http://x');
+
+  // The capturing host tab: must come from this machine, no PIN needed.
+  if (url.searchParams.get('role') === 'host') {
+    if (!isLocalRequest(req)) {
+      ws.close(4003, 'forbidden');
+      return;
+    }
+    if (hostTab) hostTab.close();
+    hostTab = ws;
+    ws.isHost = true;
+    ws.authed = true;
+    console.log('Low-latency host tab connected');
+    for (const c of authedClients()) sendJson(c, { type: 'webrtc-available' });
+
+    ws.on('message', (data, isBinary) => {
+      if (isBinary) return;
+      try {
+        const msg = JSON.parse(data.toString());
+        // Relay offer/ice to the addressed viewer.
+        if (msg.to) {
+          const target = authedClients().find((c) => c.viewerId === msg.to);
+          if (target) sendJson(target, msg);
+        }
+      } catch {}
+    });
+
+    ws.on('close', () => {
+      if (hostTab !== ws) return;
+      hostTab = null;
+      console.log('Low-latency host tab disconnected');
+      for (const c of authedClients()) sendJson(c, { type: 'webrtc-gone' });
+    });
+
+    ws.on('error', () => {});
+    return;
+  }
+
   ws.authed = !PIN || url.searchParams.get('pin') === PIN;
   if (!ws.authed) {
     ws.close(4001, 'invalid pin');
     return;
   }
 
+  ws.viewerId = nextViewerId++;
+  ws.mode = 'jpeg';
   console.log('Viewer connected');
   startCapture();
+  if (hostTab) sendJson(ws, { type: 'webrtc-available' });
 
   ws.on('message', (data, isBinary) => {
     if (isBinary) return;
@@ -158,12 +236,24 @@ wss.on('connection', (ws, req) => {
           startFfmpeg();
         }
       }
+      // Viewer switched between WebRTC video and the JPEG fallback; only run
+      // the capture pipeline while someone still needs JPEG frames.
+      if (msg.type === 'mode' && (msg.value === 'webrtc' || msg.value === 'jpeg')) {
+        ws.mode = msg.value;
+        if (jpegClients().length === 0) stopCapture();
+        else startCapture();
+      }
+      // Relay signaling to the host tab, stamped with who it came from.
+      if (msg.type === 'webrtc-request' || msg.type === 'webrtc-answer' || msg.type === 'webrtc-ice') {
+        sendJson(hostTab, { ...msg, from: ws.viewerId });
+      }
     } catch {}
   });
 
   ws.on('close', () => {
     console.log('Viewer disconnected');
-    if (authedClients().length === 0) stopCapture();
+    sendJson(hostTab, { type: 'viewer-gone', from: ws.viewerId });
+    if (jpegClients().length === 0) stopCapture();
   });
 
   ws.on('error', (err) => {
@@ -379,6 +469,25 @@ function getLocalIps() {
   return ips;
 }
 
+// A tethered phone that is plugged in but hasn't handed out an address yet
+// shows up as an interface with only an IPv6 link-local entry. Surfacing
+// those lets the setup page say "device seen, no address yet" instead of a
+// blanket "waiting" — the fix (re-toggle tethering) differs from "no cable".
+function getPendingUsb() {
+  const interfaces = os.networkInterfaces();
+  const pending = [];
+  for (const [name, addrs] of Object.entries(interfaces)) {
+    const hasIpv4 = (addrs || []).some((a) => a.family === 'IPv4' && !a.internal);
+    if (hasIpv4 || !(addrs || []).length) continue;
+    // On macOS only trust names networksetup knows about, otherwise virtual
+    // interfaces (awdl0, llw0, utun*) would all read as pending phones.
+    if (process.platform === 'darwin' && !darwinPortMap()[name]) continue;
+    const { kind, label } = classifyInterface(name);
+    if (kind === 'usb') pending.push({ name, label });
+  }
+  return pending;
+}
+
 // --- startup ---
 
 // The command a desktop shortcut should run: when running from the npx cache
@@ -517,7 +626,7 @@ wss.on('error', () => {});
 server.listen(PORT, async () => {
   console.log('Castview server running');
   console.log(`Port: ${PORT}`);
-  if (PIN) console.log(`Access PIN: ${PIN} (QR codes include it; set PIN=off to disable)`);
+  if (PIN) console.log(`Access PIN: ${PIN} (viewers type it in the browser; set PIN=off to disable)`);
   const ips = getLocalIps();
   if (ips.length === 0) {
     console.log('No non-internal IPv4 interfaces found. Check your network connection.');
@@ -528,7 +637,7 @@ server.listen(PORT, async () => {
     console.log(`  http://${address}:${PORT}   (${name})`);
   }
   console.log(`Setup page with QR codes (open on this computer): http://localhost:${PORT}/host`);
-  const url = `http://${ips[0].address}:${PORT}${PIN ? `/?pin=${PIN}` : ''}`;
+  const url = `http://${ips[0].address}:${PORT}`;
   console.log(`\nScan to view (${url}):`);
   console.log(await QRCode.toString(url, { type: 'terminal', small: true }));
   autoCreateShortcut();

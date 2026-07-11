@@ -151,7 +151,6 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 18px;
-    align-items: start;
   }
   @media (max-width: 680px) { .cards { grid-template-columns: 1fr; } }
 
@@ -160,6 +159,8 @@
     border: 1px solid var(--border);
     border-radius: 16px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
   .card-head {
     display: flex;
@@ -182,7 +183,7 @@
   .card-head h2 { font-size: 15.5px; font-weight: 650; letter-spacing: -0.01em; }
   .card-head p { font-size: 12.5px; color: var(--muted); margin-top: 1px; }
 
-  .card-body { padding: 26px 24px; }
+  .card-body { padding: 26px 24px; flex: 1; }
 
   .qr-wrap { display: flex; flex-direction: column; align-items: center; }
   .qr-card {
@@ -220,19 +221,25 @@
   .hint b { color: var(--text); font-weight: 600; }
 
   .device-chip {
-    display: inline-flex;
+    display: none;
     align-items: center;
-    gap: 8px;
-    padding: 6px 14px;
+    gap: 7px;
+    padding: 5px 12px;
     border-radius: 999px;
     background: rgba(74, 222, 128, 0.1);
     border: 1px solid rgba(74, 222, 128, 0.3);
     color: var(--ok);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
-    margin-bottom: 18px;
+    margin-left: auto;
+    flex-shrink: 0;
+    max-width: 45%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .device-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+  .device-chip.show { display: inline-flex; }
+  .device-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
 
   .steps { display: flex; flex-direction: column; gap: 14px; }
   .step { display: flex; gap: 13px; align-items: flex-start; }
@@ -272,6 +279,26 @@
   }
   @keyframes pulse { 50% { opacity: .2; } }
 
+  .scan-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 12px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .scan-btn:hover { border-color: var(--accent); }
+  .scan-btn:disabled { opacity: .6; cursor: default; }
+  .scan-btn.spin svg { animation: rotate .8s linear infinite; }
+  @keyframes rotate { to { transform: rotate(360deg); } }
+
   .none { font-size: 13.5px; color: var(--muted); line-height: 1.7; }
 
   footer {
@@ -279,6 +306,50 @@
     font-size: 12.5px;
     color: var(--muted);
     margin-top: 30px;
+  }
+
+  /* ---------- low latency bar ---------- */
+  .ll-bar {
+    display: none;
+    align-items: center;
+    gap: 18px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 22px;
+    margin-bottom: 18px;
+  }
+  .ll-bar.show { display: flex; }
+  .ll-bar .txt { font-size: 13px; color: var(--muted); line-height: 1.55; flex: 1; }
+  .ll-bar .txt b { color: var(--text); font-weight: 600; display: block; font-size: 13.5px; margin-bottom: 1px; }
+  .ll-bar .txt b .on-dot {
+    display: none;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--ok);
+    margin-right: 7px;
+    vertical-align: 1px;
+  }
+  .ll-bar.active .txt b .on-dot { display: inline-block; }
+  .ll-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border-radius: 8px;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-border);
+    color: var(--accent);
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .ll-bar.active .ll-btn {
+    background: var(--card2);
+    border-color: var(--border);
+    color: var(--muted);
   }
 
   /* ---------- stopped overlay ---------- */
@@ -348,12 +419,25 @@
     <div class="divider"></div>
     <div class="txt">
       <b>PIN for this session</b>
-      Scanning a code connects without it — it's only asked when someone types the address by hand. A new PIN is created each time Castview starts.
+      Anyone connecting will be asked to type this PIN in their browser. A new PIN is created each time Castview starts.
     </div>
   </div>
 
   <div class="warn" id="ffmpeg-banner">
-    Running in basic mode — the stream will look choppy. Install <b>ffmpeg</b> (ffmpeg.org) and restart Castview for smooth streaming.
+    Running in basic mode, so the stream will look choppy. Install <b>ffmpeg</b> (ffmpeg.org) and restart Castview for smooth streaming.
+  </div>
+
+  <div class="ll-bar" id="ll-bar">
+    <div class="txt">
+      <b><span class="on-dot"></span>Low latency mode</b>
+      <span id="ll-status">Stream at 30fps with well under half the delay. Uses this tab to capture, so keep it open while it runs.</span>
+    </div>
+    <button class="ll-btn" id="ll-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/>
+      </svg>
+      <span id="ll-btn-lbl">Turn on</span>
+    </button>
   </div>
 
   <div class="cards">
@@ -385,6 +469,7 @@
           <h2>USB cable</h2>
           <p>No WiFi needed</p>
         </div>
+        <div class="device-chip" id="usb-chip"><span class="dot"></span><span id="usb-chip-name"></span></div>
       </div>
       <div class="card-body" id="usb-body"></div>
     </div>
@@ -415,21 +500,31 @@
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
     </svg>
-    <span>Open the <b>camera</b> on the other device and point it at this code — or type the address into its browser.</span>
+    <span>Open the <b>camera</b> on the other device and point it at this code, or type the address into its browser.</span>
   `;
 
-  const USB_STEPS = `
-    <div class="steps">
-      <div class="step"><span class="n">1</span><p>Connect your phone or tablet to this computer with a <b>USB cable</b></p></div>
-      <div class="step"><span class="n">2</span><p>On the phone, turn on <b>USB tethering</b> — search "tethering" in its Settings</p></div>
-    </div>
-    <div class="waiting"><span class="pulse"></span>Waiting for a device — a QR code will appear here on its own</div>
-  `;
+  function usbSteps(pending) {
+    const status = pending.length
+      ? `<b>${pending[0].label}</b> is plugged in but has no network address yet. Turn USB tethering off and back on, then scan again`
+      : 'Waiting for a device. A QR code will appear here on its own';
+    return `
+      <div class="steps">
+        <div class="step"><span class="n">1</span><p>Connect your phone or tablet to this computer with a <b>USB cable</b></p></div>
+        <div class="step"><span class="n">2</span><p>On the phone, turn on <b>USB tethering</b>. Search "tethering" in its Settings</p></div>
+      </div>
+      <div class="waiting"><span class="pulse"></span><span>${status}</span></div>
+      <button class="scan-btn" id="scan-now">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/>
+        </svg>
+        Scan now
+      </button>
+    `;
+  }
 
-  function qrBlock(i, chip) {
+  function qrBlock(i) {
     return `
       <div class="qr-wrap">
-        ${chip ? `<div class="device-chip"><span class="dot"></span>${i.label} connected</div>` : ''}
         <div class="qr-card">${i.qrSvg}</div>
         <div class="url">${i.url}</div>
         <div class="hint">${CAMERA_HINT}</div>
@@ -437,10 +532,10 @@
     `;
   }
 
-  async function refresh() {
+  async function refresh(fresh) {
     if (stopped) return;
     try {
-      const info = await (await fetch('/api/info')).json();
+      const info = await (await fetch(fresh ? '/api/info?fresh=1' : '/api/info')).json();
 
       if (info.pin) {
         document.getElementById('pin-value').textContent = info.pin;
@@ -457,7 +552,9 @@
         document.getElementById('shortcut-lbl').textContent = 'Desktop shortcut';
       }
 
-      const key = info.interfaces.map(i => i.kind + i.address).join('|');
+      const pending = info.pending || [];
+      const key = info.interfaces.map(i => i.kind + i.address).join('|')
+        + '~' + pending.map(p => p.name).join('|');
       if (key === lastKey) return;
       lastKey = key;
 
@@ -469,16 +566,36 @@
       const wifiLike = [...wifi, ...wired];
 
       wifiBody.innerHTML = wifiLike.length
-        ? wifiLike.map(i => qrBlock(i, false)).join('<div style="height:24px"></div>')
+        ? wifiLike.map(qrBlock).join('<div style="height:24px"></div>')
         : '<div class="none">This computer has no WiFi connection. Use the USB option instead.</div>';
 
       usbBody.innerHTML = usb.length
-        ? usb.map(i => qrBlock(i, true)).join('<div style="height:24px"></div>')
-        : USB_STEPS;
+        ? usb.map(qrBlock).join('<div style="height:24px"></div>')
+        : usbSteps(pending);
+
+      // Connected device name lives in the card header, not above the QR,
+      // so both cards keep the same height.
+      document.getElementById('usb-chip').classList.toggle('show', usb.length > 0);
+      document.getElementById('usb-chip-name').textContent = usb.length ? usb[0].label : '';
     } catch {
       // server briefly unreachable; keep last known state and retry
     }
   }
+
+  // "Scan now" lives inside re-rendered HTML, so listen on the container.
+  usbBody.addEventListener('click', async (e) => {
+    const btn = e.target.closest('#scan-now');
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    btn.classList.add('spin');
+    lastKey = ''; // force a re-render even if nothing changed
+    await refresh(true);
+    const after = document.getElementById('scan-now');
+    if (after) {
+      after.classList.remove('spin');
+      after.disabled = false;
+    }
+  });
 
   const shortcutBtn = document.getElementById('shortcut');
   shortcutBtn.addEventListener('click', async () => {
@@ -503,6 +620,100 @@
 
   refresh();
   setInterval(refresh, 3000);
+
+  // --- low latency mode: capture this screen in-tab, stream WebRTC to viewers ---
+  // Media goes peer-to-peer over the LAN; the Node server only relays the
+  // offer/answer/ICE signaling. Only works from this machine (localhost is a
+  // secure context, so getDisplayMedia is allowed even over plain http).
+  const llBar = document.getElementById('ll-bar');
+  const llBtn = document.getElementById('ll-btn');
+  const llBtnLbl = document.getElementById('ll-btn-lbl');
+  const llStatus = document.getElementById('ll-status');
+  const LL_IDLE_STATUS = llStatus.textContent;
+  let llStream = null;
+  let llWs = null;
+  const llPeers = new Map();
+
+  if (window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+    llBar.classList.add('show');
+  }
+
+  function llViewerCount() {
+    let n = 0;
+    for (const pc of llPeers.values()) {
+      if (pc.connectionState === 'connected') n++;
+    }
+    return n;
+  }
+
+  function llUpdateStatus() {
+    if (!llStream) return;
+    const n = llViewerCount();
+    llStatus.textContent = n
+      ? `Active. ${n} viewer${n === 1 ? '' : 's'} watching the low-latency stream.`
+      : 'Active. Waiting for viewers; they switch over automatically.';
+  }
+
+  async function llCreatePeer(id) {
+    const old = llPeers.get(id);
+    if (old) old.close();
+    const pc = new RTCPeerConnection();
+    llPeers.set(id, pc);
+    for (const track of llStream.getTracks()) pc.addTrack(track, llStream);
+    pc.onicecandidate = (e) => {
+      if (e.candidate && llWs) llWs.send(JSON.stringify({ type: 'webrtc-ice', to: id, candidate: e.candidate }));
+    };
+    pc.onconnectionstatechange = () => {
+      if (['failed', 'closed', 'disconnected'].includes(pc.connectionState) && llPeers.get(id) === pc) {
+        llPeers.delete(id);
+        pc.close();
+      }
+      llUpdateStatus();
+    };
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    llWs.send(JSON.stringify({ type: 'webrtc-offer', to: id, sdp: pc.localDescription }));
+  }
+
+  async function llEnable() {
+    try {
+      llStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: 30, displaySurface: 'monitor' },
+        audio: false,
+      });
+    } catch {
+      return; // user dismissed the picker
+    }
+    const track = llStream.getVideoTracks()[0];
+    track.contentHint = 'detail'; // keep text readable over motion smoothness
+    track.onended = llDisable; // browser's own "Stop sharing" button
+    llWs = new WebSocket(`ws://${location.host}/?role=host`);
+    llWs.onmessage = async (e) => {
+      const msg = JSON.parse(e.data);
+      const pc = llPeers.get(msg.from);
+      if (msg.type === 'webrtc-request') await llCreatePeer(msg.from);
+      else if (msg.type === 'webrtc-answer' && pc) await pc.setRemoteDescription(msg.sdp).catch(() => {});
+      else if (msg.type === 'webrtc-ice' && pc) await pc.addIceCandidate(msg.candidate).catch(() => {});
+      else if (msg.type === 'viewer-gone' && pc) { pc.close(); llPeers.delete(msg.from); llUpdateStatus(); }
+    };
+    llWs.onclose = () => { if (llStream) llDisable(); };
+    llBar.classList.add('active');
+    llBtnLbl.textContent = 'Turn off';
+    llUpdateStatus();
+  }
+
+  function llDisable() {
+    if (llStream) for (const t of llStream.getTracks()) t.stop();
+    llStream = null;
+    for (const pc of llPeers.values()) pc.close();
+    llPeers.clear();
+    if (llWs) { llWs.onclose = null; llWs.close(); llWs = null; }
+    llBar.classList.remove('active');
+    llBtnLbl.textContent = 'Turn on';
+    llStatus.textContent = LL_IDLE_STATUS;
+  }
+
+  llBtn.addEventListener('click', () => (llStream ? llDisable() : llEnable()));
 </script>
 </body>
 </html>

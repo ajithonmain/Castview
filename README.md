@@ -19,7 +19,7 @@ That's it. Castview:
 2. opens a setup page in your browser with QR codes,
 3. adds a launcher to your Desktop so next time is a double-click.
 
-Point a phone or tablet camera at a QR code and the live screen opens in its browser, already authenticated.
+Point a phone or tablet camera at a QR code, type the session PIN shown on the setup page, and the live screen opens in its browser.
 
 Permanent install, if you prefer:
 
@@ -45,7 +45,7 @@ The viewing device needs only a browser (Chrome, Safari, Edge, Firefox).
 
 Open the QR link and you get a full-screen live view with a small control pill in the bottom-left corner:
 
-- **Quality: HD / Fast** — HD streams up to 1920px-wide frames; Fast sends much smaller frames for weak WiFi or lower latency.
+- **Quality: HD / Fast** — HD streams up to 1600px-wide frames; Fast sends much smaller frames for weak WiFi or lower latency.
 - **Rotate** — turns the picture 90 degrees, for holding a phone in portrait while viewing a landscape screen.
 - **Full screen** — with automatic landscape orientation lock where the browser supports it.
 
@@ -57,13 +57,15 @@ The viewer auto-reconnects if the connection drops, keeps the device awake while
 
 - QR codes and addresses for every network you're on, labelled WiFi / USB, updating live
 - The session PIN
+- **Low latency mode** toggle — the setup tab captures the screen itself and streams WebRTC directly to viewers at ~30 fps with a fraction of the delay. Viewers switch over automatically and fall back to the JPEG stream if the tab closes. Keep the tab open while it runs.
+- **Scan now** button on the USB card — re-detects a freshly plugged-in phone, and tells you when a device is connected but hasn't been assigned an address yet
 - **Stop sharing** button — shuts the server down, no terminal needed
 - **Desktop shortcut** button — re-adds the launcher if you removed it
 - A warning banner if ffmpeg is missing
 
 ## Security
 
-- Every session generates a **random 4-digit PIN**. QR codes embed it; anyone typing the address by hand is asked for it. The PIN is disclosed only on the shared computer itself.
+- Every session generates a **random 4-digit PIN**. Every viewer types it once in their browser; QR codes and printed URLs deliberately do not embed it, and the PIN is shown only on the shared computer itself.
 - The stream never leaves your local network. No cloud, no telemetry.
 - Stop and shortcut endpoints only accept requests from the shared computer.
 
@@ -111,13 +113,14 @@ npx castview --no-pin
   └─ serves the viewer + setup pages
 ```
 
-Deliberately simple: JPEG frames over a WebSocket, decodable by any browser with zero client code beyond one HTML page. No WebRTC negotiation, no codecs to install, no build step — the dependencies are pure JavaScript.
+Deliberately simple: JPEG frames over a WebSocket, decodable by any browser with zero client code beyond one HTML page. No codecs to install, no build step — the dependencies are pure JavaScript.
+
+When **low latency mode** is on, the setup tab captures the screen with `getDisplayMedia` and streams WebRTC video peer-to-peer over the LAN; the Node server only relays the signaling. Viewers use it automatically when available and fall back to the JPEG stream when it isn't.
 
 ## Roadmap
 
 - Remote control from the viewer (mouse/keyboard passthrough)
 - Multi-monitor picker on the setup page
-- Lower-latency transport (WebRTC) if the JPEG pipeline hits its ceiling
 
 Issues and PRs welcome: [github.com/ajithonmain/Castview](https://github.com/ajithonmain/Castview)
 
