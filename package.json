@@ -1,6 +1,6 @@
 {
   "name": "castview",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Mirror your screen to any device with a browser over LAN. Zero install on the viewer, QR code to connect, works over WiFi or a USB cable.",
   "main": "server.js",
   "bin": {
