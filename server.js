@@ -72,6 +72,7 @@ const server = http.createServer((req, res) => {
           viewers: wss.clients.size,
           // Only reveal the PIN to the machine being mirrored.
           pin: isLocalRequest(req) ? PIN : undefined,
+          shortcutExists: isLocalRequest(req) ? fs.existsSync(shortcutPath()) : undefined,
         }));
       })
       .catch((err) => {
@@ -387,6 +388,13 @@ function relaunchCommand() {
   return `"${process.execPath}" "${path.join(__dirname, 'server.js')}"`;
 }
 
+function shortcutPath() {
+  const desktop = path.join(os.homedir(), 'Desktop');
+  if (process.platform === 'darwin') return path.join(desktop, 'Castview.app');
+  if (process.platform === 'win32') return path.join(desktop, 'Castview.lnk');
+  return path.join(desktop, 'castview.desktop');
+}
+
 // Creates a proper launcher with the Castview icon that starts the server in
 // the background — no terminal window. Stopping is done from the setup page.
 function createDesktopShortcut() {
@@ -396,7 +404,7 @@ function createDesktopShortcut() {
 
   if (process.platform === 'darwin') {
     // A minimal .app bundle: gets a real icon and launches without Terminal.
-    const app = path.join(desktop, 'Castview.app');
+    const app = shortcutPath();
     fs.mkdirSync(path.join(app, 'Contents', 'MacOS'), { recursive: true });
     fs.mkdirSync(path.join(app, 'Contents', 'Resources'), { recursive: true });
     fs.writeFileSync(path.join(app, 'Contents', 'Info.plist'), `<?xml version="1.0" encoding="UTF-8"?>
@@ -424,7 +432,7 @@ ${cmd} &>/dev/null &
 
   if (process.platform === 'win32') {
     // A .lnk with the Castview icon, launching node hidden via PowerShell.
-    const lnk = path.join(desktop, 'Castview.lnk');
+    const lnk = shortcutPath();
     const ico = path.join(__dirname, 'assets', 'castview.ico');
     const psTarget = cmd.replace(/'/g, "''");
     const script = [
@@ -440,7 +448,7 @@ ${cmd} &>/dev/null &
     return lnk;
   }
 
-  const file = path.join(desktop, 'castview.desktop');
+  const file = shortcutPath();
   fs.writeFileSync(file, [
     '[Desktop Entry]',
     'Type=Application',

@@ -322,7 +322,7 @@
     </div>
     <div class="header-right">
       <div class="live"><span class="dot"></span>Live</div>
-      <button class="shortcut-btn" id="shortcut" title="Put a Castview launcher on your Desktop so you can start sharing with a double-click">
+      <button class="shortcut-btn" id="shortcut" style="display:none" title="Put a Castview launcher on your Desktop so you can start sharing with a double-click">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 3v12M12 15l-4-4M12 15l4-4"/>
           <path d="M4 19h16"/>
@@ -447,6 +447,15 @@
         document.getElementById('pin-bar').style.display = 'flex';
       }
       document.getElementById('ffmpeg-banner').style.display = info.ffmpeg ? 'none' : 'block';
+
+      // Offer the shortcut button only while the launcher is missing.
+      if (info.shortcutExists === false && !shortcutBtn.classList.contains('done')) {
+        shortcutBtn.style.display = 'inline-flex';
+      } else if (info.shortcutExists) {
+        shortcutBtn.style.display = 'none';
+        shortcutBtn.classList.remove('done');
+        document.getElementById('shortcut-lbl').textContent = 'Desktop shortcut';
+      }
 
       const key = info.interfaces.map(i => i.kind + i.address).join('|');
       if (key === lastKey) return;
