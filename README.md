@@ -1,20 +1,11 @@
 # Castview
 
-Mirror a laptop's screen (Windows, Mac, or Linux) to any device with a browser — phone, tablet, another computer. No admin rights, nothing to install on the viewing device, no capture card.
+[![npm version](https://img.shields.io/npm/v/castview)](https://www.npmjs.com/package/castview)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-Born from a real problem: a laptop with a broken display, and a tablet that could stand in as its screen.
+Mirror a computer's screen to any device with a browser — phone, tablet, or another computer. One command on the host, one QR scan on the viewer. Nothing to install on the viewing device, no admin rights, no accounts, no cloud.
 
-## How it works
-
-```
-[Your computer]                        [Any device with a browser]
-  node server.js                          scan QR / open URL
-  ├─ captures the screen                  └─ live view of your screen
-  ├─ streams JPEG frames over WebSocket
-  └─ serves the viewer page
-```
-
-Everything stays on your local network. Nothing goes over the internet.
+Castview was built as a rescue tool for a laptop with a dead display: if the machine has Node.js and you have a USB cable, you have a screen again. It works just as well for everyday sharing — showing your screen to a tablet on your desk, a TV browser, or a colleague's laptop on the same network.
 
 ## Quick start
 
@@ -22,64 +13,114 @@ Everything stays on your local network. Nothing goes over the internet.
 npx castview
 ```
 
-Or from source:
+That's it. Castview:
+
+1. starts sharing your screen on your local network,
+2. opens a setup page in your browser with QR codes,
+3. adds a launcher to your Desktop so next time is a double-click.
+
+Point a phone or tablet camera at a QR code and the live screen opens in its browser, already authenticated.
+
+Permanent install, if you prefer:
 
 ```bash
-git clone https://github.com/ajithonmain/Castview.git
-cd Castview
-npm install
-node server.js
+npm install -g castview
+castview
 ```
-
-Your browser opens a setup page with QR codes. Scan one with your phone or tablet camera — the mirrored screen opens in its browser, already authenticated. That's it.
-
-No admin/sudo needed, and dependencies are pure JavaScript — no build tools required on the machine.
 
 ## Requirements
 
-- Node.js on the computer being mirrored
-- **Optional but recommended:** [ffmpeg](https://ffmpeg.org) on PATH — enables smooth streaming (~15 fps with cursor). Without it, Castview falls back to a basic screenshot loop (choppier). A portable ffmpeg build in a folder on PATH works fine; no installer needed.
+- **Node.js 18+** on the computer being shared. That's the only hard requirement.
+- **ffmpeg** (optional, recommended): enables smooth ~15 fps streaming with the cursor visible. Without it Castview falls back to a basic screenshot loop, which works but looks choppy. Any ffmpeg on PATH is fine — a portable build in a folder works, no installer or admin rights needed.
+
+The viewing device needs only a browser (Chrome, Safari, Edge, Firefox).
 
 ## Connection options
 
-**WiFi (typical):** both devices on the same network. Scan the QR code from the setup page or terminal, or type the printed URL.
+**WiFi** — both devices on the same network. Scan the QR code from the setup page or the terminal.
 
-**USB cable (no WiFi):** connect the device with a USB cable and enable USB tethering on it (Settings → Hotspot & tethering). A new QR code appears on the setup page automatically — no restart needed.
+**USB cable** — no WiFi needed. Plug the phone/tablet into the computer and enable USB tethering on it (Settings, search "tethering"). The setup page detects the new connection within seconds and shows a QR code for it — no restart required.
+
+## The viewer
+
+Open the QR link and you get a full-screen live view with a small control pill in the bottom-left corner:
+
+- **Quality: HD / Fast** — HD streams up to 1920px-wide frames; Fast sends much smaller frames for weak WiFi or lower latency.
+- **Rotate** — turns the picture 90 degrees, for holding a phone in portrait while viewing a landscape screen.
+- **Full screen** — with automatic landscape orientation lock where the browser supports it.
+
+The viewer auto-reconnects if the connection drops, keeps the device awake while watching, and supports pinch-to-zoom. On iPhone (no fullscreen API), add the page to your Home Screen for a fullscreen experience.
+
+## The setup page
+
+`http://localhost:8080/host` on the shared computer (opens automatically on start):
+
+- QR codes and addresses for every network you're on, labelled WiFi / USB, updating live
+- The session PIN
+- **Stop sharing** button — shuts the server down, no terminal needed
+- **Desktop shortcut** button — re-adds the launcher if you removed it
+- A warning banner if ffmpeg is missing
+
+## Security
+
+- Every session generates a **random 4-digit PIN**. QR codes embed it; anyone typing the address by hand is asked for it. The PIN is disclosed only on the shared computer itself.
+- The stream never leaves your local network. No cloud, no telemetry.
+- Stop and shortcut endpoints only accept requests from the shared computer.
+
+This is LAN-convenience security, not cryptography: the stream is plain HTTP on your own network. Don't use it on networks you don't trust.
 
 ## Configuration
 
-Environment variables, all optional:
+All optional, via environment variables:
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `PORT` | `8080` | HTTP/WebSocket port |
 | `FPS` | `15` | Target frame rate |
-| `PIN` | random | Access PIN; set a fixed one, or disable with `PIN=off` / `--no-pin` (use `--no-pin` when the host screen is unreadable) |
-| `QUALITY` | `sharp` | `sharp` or `smooth` (smaller frames for weak WiFi) |
+| `PIN` | random | Fixed access PIN, or `PIN=off` to disable |
+| `QUALITY` | `sharp` | Starting quality: `sharp` (HD) or `smooth` (Fast) |
 | `SCREEN` | `0` | Display index to capture (macOS) |
-| `NO_OPEN` | unset | Set to `1` to skip auto-opening the setup page |
-| `NO_SHORTCUT` | unset | Set to `1` to skip creating the desktop launcher on first run |
+| `NO_OPEN` | unset | `1` skips auto-opening the setup page |
+| `NO_SHORTCUT` | unset | `1` skips creating the desktop launcher on first run |
 
-Example: `FPS=30 PIN=1234 npx castview`
+Flags:
 
-Viewers can also toggle sharp/smooth live from a button in the viewer.
+- `--no-pin` — disable the PIN. Essential for the blind-rescue case: when the host screen is dead you can't read a random PIN, so type `npx castview --no-pin` blind and open the printed-style address from the viewer.
+
+Examples:
+
+```bash
+FPS=30 PIN=1234 npx castview
+npx castview --no-pin
+```
 
 ## Platform notes
 
-- **macOS:** first run asks for Screen Recording permission (System Settings → Privacy & Security) — a one-time OS prompt, not an install.
-- **Windows:** works without admin. For smooth mode, drop a portable `ffmpeg.exe` somewhere on PATH.
-- **Linux:** X11 capture via ffmpeg (`x11grab`).
+- **macOS** — first run asks for Screen Recording permission (System Settings → Privacy & Security). One-time OS prompt, not an install. The desktop launcher is a real .app with the Castview icon that starts sharing in the background.
+- **Windows** — runs without admin. Capture uses ffmpeg's `gdigrab`; the launcher is a `.lnk` that starts Castview hidden.
+- **Linux** — X11 capture via ffmpeg's `x11grab`; the launcher is a `.desktop` entry.
 
-## Security note
+## How it works
 
-Every session is protected by a random 4-digit PIN. QR codes embed it, so scanning connects directly; anyone typing the address by hand is asked for it. The PIN is only shown on the machine being mirrored. Stop the server (Ctrl+C) when you're done. Note this is LAN-convenience security, not cryptographic — the stream itself is unencrypted HTTP on your local network.
+```
+[Shared computer]                        [Any browser]
+  castview (Node)                          scan QR / open URL
+  ├─ ffmpeg captures the screen            └─ live view, ~15 fps
+  │  as an MJPEG stream (cursor included)
+  ├─ frames pushed over WebSocket
+  └─ serves the viewer + setup pages
+```
+
+Deliberately simple: JPEG frames over a WebSocket, decodable by any browser with zero client code beyond one HTML page. No WebRTC negotiation, no codecs to install, no build step — the dependencies are pure JavaScript.
 
 ## Roadmap
 
-- Viewer-side remote control (mouse/keyboard passthrough)
-- Multi-monitor picker in the setup page
-- Audio (out of scope for now)
+- Remote control from the viewer (mouse/keyboard passthrough)
+- Multi-monitor picker on the setup page
+- Lower-latency transport (WebRTC) if the JPEG pipeline hits its ceiling
+
+Issues and PRs welcome: [github.com/ajithonmain/Castview](https://github.com/ajithonmain/Castview)
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) — built by [Ajith M Jose](https://ajithmjose.com)
