@@ -58,6 +58,7 @@ Environment variables, all optional:
 | `QUALITY` | `sharp` | `sharp` or `smooth` (smaller frames for weak WiFi) |
 | `SCREEN` | `0` | Display index to capture (macOS) |
 | `NO_OPEN` | unset | Set to `1` to skip auto-opening the setup page |
+| `NO_SHORTCUT` | unset | Set to `1` to skip creating the desktop launcher on first run |
 
 Example: `FPS=30 PIN=1234 npx castview`
 

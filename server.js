@@ -454,6 +454,26 @@ ${cmd} &>/dev/null &
   return file;
 }
 
+// On the very first run, add the desktop launcher automatically. A marker in
+// ~/.castview makes this once-ever: if the user deletes the launcher we never
+// recreate it behind their back (the setup page button re-adds it manually).
+function autoCreateShortcut() {
+  if (process.env.NO_SHORTCUT) return;
+  const markerDir = path.join(os.homedir(), '.castview');
+  const marker = path.join(markerDir, 'shortcut-created');
+  if (fs.existsSync(marker)) return;
+  try {
+    const file = createDesktopShortcut();
+    console.log(`Added a launcher to your Desktop: ${path.basename(file)} (delete it anytime; NO_SHORTCUT=1 prevents this)`);
+  } catch {
+    // No Desktop folder or shortcut tooling failed; the setup page button remains.
+  }
+  try {
+    fs.mkdirSync(markerDir, { recursive: true });
+    fs.writeFileSync(marker, new Date().toISOString());
+  } catch {}
+}
+
 // Open the host setup page in the default browser (best effort; NO_OPEN=1 disables).
 function openHostPage(url) {
   if (process.env.NO_OPEN) return;
@@ -503,5 +523,6 @@ server.listen(PORT, async () => {
   const url = `http://${ips[0].address}:${PORT}${PIN ? `/?pin=${PIN}` : ''}`;
   console.log(`\nScan to view (${url}):`);
   console.log(await QRCode.toString(url, { type: 'terminal', small: true }));
+  autoCreateShortcut();
   openHostPage(`http://localhost:${PORT}/host`);
 });
